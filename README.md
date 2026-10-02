@@ -24,9 +24,10 @@ reference WebGPU port.
 
 ![The demo in split view: the Lee Perry-Smith head scan rendered normally on the left and through the TSL network on the right](docs/images/demo-tsl-synthetic-split.png)
 
-_The demo in split view, TSL backend: NR off on the left, NR on on the right. These are **synthetic weights**, which
-have the right layout and the network's real arithmetic but produce meaningless output, hence the red field. With a
-real model directory the right half is the re-rendered head. Head: Lee Perry-Smith, CC BY 3.0
+_**Synthetic weights: output is not meaningful.** The demo in split view on the TSL backend, NR off on the left and
+NR on on the right. Synthetic weights have the right layout and run the network's real arithmetic, but the image they
+produce means nothing, hence the red field ([why](#why-there-are-no-real-weights-and-what-the-synthetic-ones-are-for)).
+With a real model directory the right half is the re-rendered head. Head: Lee Perry-Smith, CC BY 3.0
 ([credits](#credits))._
 
 Try it live at **[three-dlss-nr.ben3d.ca](https://three-dlss-nr.ben3d.ca)**.

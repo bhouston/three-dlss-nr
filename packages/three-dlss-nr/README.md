@@ -37,11 +37,19 @@ npm install three-dlss-nr three
 
 ## Weights
 
-**You supply the weights; none are included, downloaded or hosted.** NVIDIA's trained weights are proprietary and are
-not distributed by this package or by OpenDLSS-NR. Point the network at a model directory you are entitled to use:
-`manifest.json` plus `model/stages/*`, in the layout described in upstream's
-[`docs/weights.md`](https://github.com/maanHimself/OpenDLSS-NR/blob/9d08f41/docs/weights.md). For testing,
-`three-dlss-nr/synthetic` generates weights in the same layout (meaningless output).
+**You supply the weights; none are included, downloaded, hosted or extracted.** The trained weights are NVIDIA's
+proprietary DLSS-NR 310.8.0 model. Neither this package nor OpenDLSS-NR distributes them or explains how to obtain
+them, and extracting them from NVIDIA's binaries would likely breach NVIDIA's license terms. If you are entitled to a
+model directory, pass it to `NRModel.load`: `manifest.json` plus `model/stages/*`, in the layout described in
+upstream's [`docs/weights.md`](https://github.com/maanHimself/OpenDLSS-NR/blob/9d08f41/docs/weights.md).
+
+`three-dlss-nr/synthetic` generates deterministic weights in the same layout, calibrated to keep every block in a
+realistic range. Because the port is bit-exact against the reference on these arbitrary weights, it will match on any
+weights, real ones included. Synthetic weights let the pipeline run end to end, but the image they produce is
+meaningless. The
+[repository README](https://github.com/bhouston/three-dlss-nr#why-there-are-no-real-weights-and-what-the-synthetic-ones-are-for)
+explains why and the paths to meaningful output (a license from NVIDIA, or
+[open weights trained for the same architecture](https://github.com/bhouston/three-dlss-nr/blob/main/docs/training-weights.md)).
 
 ## Quick start
 
