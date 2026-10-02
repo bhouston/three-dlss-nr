@@ -14,3 +14,65 @@ export const UPSTREAM = {
 
 /** Package version (placeholder until the network port lands). */
 export const VERSION = '0.1.0';
+
+export type {
+  ComputeNode,
+  Dim3,
+  F16Matrix,
+  F32Vector,
+  FP8Matrix,
+  GemmF16Buffers,
+  GemmF16Spec,
+  GemmFp8Buffers,
+  GemmSpec,
+  HalfVector,
+  NRKernel,
+  NRTensor,
+  StorageBufferAttribute,
+  TensorFormat,
+  VitAttendBuffers,
+  VitNormalizeBuffers,
+  VitSpec,
+  WindowAttentionBuffers,
+  WindowAttentionSpec,
+} from './types.js';
+
+export {
+  checkNRDeviceLimits,
+  createNRDevice,
+  createNRRenderer,
+  NR_MIN_WORKGROUP_STORAGE,
+  nrDeviceProblems,
+  type NRDevice,
+  type NRDeviceOptions,
+  type NRRendererOptions,
+} from './device.js';
+
+export {
+  alignUp,
+  fusedLayout,
+  geometryFromValid,
+  grid1d,
+  postFusedLayout,
+  preFusedLayout,
+  upsampleFusedLayout,
+  windowPhase,
+  WindowPhases,
+  type FusedLayout,
+  type NRGeometry,
+  type NRLevel,
+} from './geometry.js';
+
+export {
+  attributeBytes,
+  attributeFromBytes,
+  bytesPerValue,
+  createF32Vector,
+  createHalfVector,
+  createTensor,
+  fillBuffer,
+  NRTensors,
+  readBuffer,
+  wordAttribute,
+  writeBuffer,
+} from './tensors.js';
