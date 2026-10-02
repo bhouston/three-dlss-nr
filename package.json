@@ -6,10 +6,10 @@
   "type": "module",
   "scripts": {
     "build": "pnpm -r build",
-    "tsc": "tsc -b",
+    "tsc": "node packages/three-dlss-nr/scripts/bundle-reference.mjs && tsc -b",
     "dev": "pnpm --parallel --filter three-dlss-nr --filter website dev",
     "test": "pnpm tsc && vitest run --project unit --coverage",
-    "test:gpu": "vitest run --project gpu",
+    "test:gpu": "node packages/three-dlss-nr/scripts/bundle-reference.mjs && vitest run --project gpu --project gpu-network",
     "format": "oxfmt .",
     "format:check": "oxfmt --check .",
     "lint": "oxlint .",
@@ -17,7 +17,12 @@
     "commitlint": "commitlint",
     "size": "node scripts/check-bundle-size.mjs",
     "release": "semantic-release",
-    "release:check": "node --test scripts/release.test.mjs"
+    "release:check": "node --test scripts/release.test.mjs",
+    "bench:backends": "node scripts/bench-backends.mjs",
+    "fidelity:generate": "pnpm --filter fidelity-suite generate",
+    "fidelity:check": "node packages/fidelity-suite/scripts/check.mjs",
+    "fidelity:dev": "pnpm --filter fidelity-suite dev",
+    "fidelity:build": "pnpm --filter fidelity-suite build"
   },
   "devDependencies": {
     "@anolilab/semantic-release-pnpm": "^8.1.25",

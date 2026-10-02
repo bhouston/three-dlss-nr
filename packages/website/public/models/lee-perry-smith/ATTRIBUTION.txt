@@ -1,0 +1,36 @@
+Lee Perry-Smith head scan ("Infinite, 3D Head Scan")
+====================================================
+
+Author:   Lee Perry-Smith / Infinite-Realities (http://www.ir-ltd.net/)
+License:  Creative Commons Attribution 3.0 Unported (CC BY 3.0)
+          https://creativecommons.org/licenses/by/3.0/
+          NOT CC0 / public domain: attribution is required.
+
+Required attribution (show it in the demo UI):
+  "Infinite, 3D Head Scan" by Lee Perry-Smith (Infinite-Realities, ir-ltd.net),
+  licensed under CC BY 3.0 (https://creativecommons.org/licenses/by/3.0/).
+  glTF conversion from the three.js examples (github.com/mrdoob/three.js).
+
+Original license notice shipped with the files (LeePerrySmith_License.txt, verbatim):
+  Creative Commons Licence
+  Infinite, 3D Head Scan by Lee Perry-Smith is licensed under a Creative Commons
+  Attribution 3.0 Unported License.
+  Based on a work at www.triplegangers.com.
+  Permissions beyond the scope of this license may be available at http://www.ir-ltd.net/
+  Please remember: Do what you want with the files, but always mention where you got them from...
+
+Source (downloaded 2026-10-02 from the three.js dev branch):
+  https://github.com/mrdoob/three.js/tree/dev/examples/models/gltf/LeePerrySmith
+  LeePerrySmith.glb                          404,976 B  mesh only (no embedded textures)
+  Map-COL.jpg                                148,269 B  1024x1024 base colour (albedo)
+  Map-SPEC.jpg                               682,006 B  1024x1024 specular
+  Infinite-Level_02_Tangent_SmoothUV.jpg     146,793 B  1024x1024 tangent-space normal map
+  Infinite-Level_02_Disp_NoSmoothUV-4096.jpg 752,389 B  4096x4096 displacement/height map
+  LeePerrySmith_License.txt                      364 B  original license notice
+
+Corroborating sources for the license:
+  - three.js: examples/models/gltf/LeePerrySmith/LeePerrySmith_License.txt (above)
+  - Original 2010 release by Infinite-Realities, reported at
+    https://www.cgchannel.com/2010/09/infinite-realities-releases-free-photorealistic-head-model/
+    (original download page http://www.ir-ltd.net/infinite-3d-head-scan-released/, now offline)
+  - https://github.com/keijiro/InfiniteScan ("Creative Commons Attribution 3.0 Unported")

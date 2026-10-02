@@ -1,6 +1,13 @@
 {
   "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "ignorePatterns": ["**/routeTree.gen.ts", "reference/**"],
+  "ignorePatterns": [
+    "**/routeTree.gen.ts",
+    "reference/**",
+    "packages/three-dlss-nr/vendor/**",
+    "packages/website/public/parity/**",
+    "packages/fidelity-suite/results/index.json",
+    "packages/fidelity-suite/results/**/*.metrics.json"
+  ],
   "categories": {
     "correctness": "error",
     "suspicious": "warn"

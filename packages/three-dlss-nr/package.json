@@ -26,6 +26,7 @@
   },
   "files": [
     "dist",
+    "vendor",
     "NOTICE"
   ],
   "type": "module",
@@ -35,10 +36,19 @@
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
+    },
+    "./synthetic": {
+      "types": "./dist/synthetic/index.d.ts",
+      "default": "./dist/synthetic/index.js"
+    },
+    "./reference-backend": {
+      "types": "./dist/reference-backend/index.d.ts",
+      "default": "./dist/reference-backend/index.js"
     }
   },
   "scripts": {
-    "build": "tsc",
+    "bundle": "node scripts/bundle-reference.mjs",
+    "build": "node scripts/bundle-reference.mjs && tsc",
     "dev": "tsc -w --preserveWatchOutput --noEmitOnError",
     "test": "vitest run --root ../.. --project unit packages/three-dlss-nr"
   },

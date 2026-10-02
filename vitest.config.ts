@@ -3,16 +3,40 @@ import { defineConfig } from 'vitest/config';
 
 const root = fileURLToPath(new URL('.', import.meta.url));
 
+/** The reference WebGPU port's ES modules (git submodule, read-only), imported by tests as `@ref/<file>.js`. */
+const referenceSource = `${root}reference/OpenDLSS-NR/ports/browser-webgpu/src/`;
+
+/**
+ * Dawn options for the `gpu` project, from the environment:
+ *   DLSS_NR_DAWN="backend=vulkan enable-dawn-features=allow_unsafe_apis"  (whitespace-separated), or
+ *   DLSS_NR_DAWN_BACKEND=vulkan                                            (shorthand for backend=...).
+ * Dawn picks the platform backend by default (D3D12 on Windows, Metal on macOS, Vulkan on Linux; lavapipe in CI).
+ */
+function dawnOptions(): string[] {
+  const options = (process.env.DLSS_NR_DAWN ?? '').split(/\s+/).filter(Boolean);
+  if (process.env.DLSS_NR_DAWN_BACKEND) options.push(`backend=${process.env.DLSS_NR_DAWN_BACKEND}`);
+  return options;
+}
+
 // The reference implementation (git submodule) is never part of test discovery;
 // tests import its modules explicitly.
 const exclude = ['**/node_modules/**', '**/dist/**', 'reference/**'];
 
+/** Whole-network GPU tests, run as their own project after the other GPU tests. */
+const networkTests = ['packages/**/network.*.gpu.test.ts'];
+
 export default defineConfig({
   resolve: {
     // Tests (both projects) run against package sources, not dist builds.
-    alias: {
-      'three-dlss-nr': `${root}packages/three-dlss-nr/src/index.ts`,
-    },
+    alias: [
+      { find: /^three-dlss-nr\/synthetic$/, replacement: `${root}packages/three-dlss-nr/src/synthetic/index.ts` },
+      {
+        find: /^three-dlss-nr\/reference-backend$/,
+        replacement: `${root}packages/three-dlss-nr/src/reference-backend/index.ts`,
+      },
+      { find: 'three-dlss-nr', replacement: `${root}packages/three-dlss-nr/src/index.ts` },
+      { find: /^@ref\//, replacement: referenceSource },
+    ],
   },
   test: {
     coverage: {
@@ -28,6 +52,9 @@ export default defineConfig({
         test: {
           name: 'unit',
           testTimeout: 30_000,
+          // Generating the 141 MiB synthetic model (with SHA-256) in beforeAll takes
+          // well over the 10 s default on CI runners under coverage instrumentation.
+          hookTimeout: 120_000,
           include: ['packages/**/*.test.ts'],
           exclude: [...exclude, '**/*.gpu.test.ts'],
         },
@@ -37,19 +64,32 @@ export default defineConfig({
         test: {
           name: 'gpu',
           // Headless WebGPU in Node via Google's Dawn (vitest-environment-webgpu-node):
-          // navigator.gpu, GPU* globals and a headless canvas, no browser. Dawn picks
-          // the platform backend (D3D12 on Windows, Metal on macOS, Vulkan on Linux;
-          // lavapipe in CI). Override with DLSS_NR_DAWN_BACKEND, e.g. `vulkan`.
+          // navigator.gpu, GPU* globals and a headless canvas, no browser. See dawnOptions().
           environment: 'webgpu-node',
-          environmentOptions: {
-            webgpuNode: {
-              dawnOptions: process.env.DLSS_NR_DAWN_BACKEND ? [`backend=${process.env.DLSS_NR_DAWN_BACKEND}`] : [],
-            },
-          },
+          environmentOptions: { webgpuNode: { dawnOptions: dawnOptions() } },
+          // fetch() for file: and synthetic: URLs, so the reference port loads its WGSL and weights in Node.
+          setupFiles: [`${root}packages/three-dlss-nr/test/setup/fetchShim.ts`],
           include: ['packages/**/*.gpu.test.ts'],
-          exclude,
+          exclude: [...exclude, ...networkTests],
           testTimeout: 120_000,
           hookTimeout: 120_000,
+          sequence: { groupOrder: 0 },
+        },
+      },
+      {
+        extends: true,
+        test: {
+          // The whole network (network.*.gpu.test.ts): minutes of kernel compilation and full-GPU frames. Its own
+          // project with a later group order, so it runs after the other GPU files instead of starving them.
+          name: 'gpu-network',
+          environment: 'webgpu-node',
+          environmentOptions: { webgpuNode: { dawnOptions: dawnOptions() } },
+          setupFiles: [`${root}packages/three-dlss-nr/test/setup/fetchShim.ts`],
+          include: networkTests,
+          exclude,
+          testTimeout: 1_800_000,
+          hookTimeout: 600_000,
+          sequence: { groupOrder: 1 },
         },
       },
     ],

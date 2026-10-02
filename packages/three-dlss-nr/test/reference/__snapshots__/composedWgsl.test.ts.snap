@@ -1,0 +1,20 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`composed reference WGSL > FP8 GEMM variants (output x residual x batched, tile128) 1`] = `
+{
+  "dual/e4": "fbe2cc0db1b0310b",
+  "dual/e4/batched": "927b50cb6ea98d5a",
+  "dual/half": "1342caa9ba08cd5e",
+  "dual/half/batched": "e738dffa29095d3e",
+  "e4/e4": "7d438f8fe9f46c2a",
+  "e4/e4/batched": "c462c181d4a36fb0",
+  "e4/half": "3f6e8eb14fd89b7d",
+  "e4/half/batched": "85af36fff51d7379",
+  "half/e4": "77d6b7d87b303a67",
+  "half/e4/batched": "ac81e2369e609561",
+  "half/half": "b5ebcddd1b8fd76a",
+  "half/half/batched": "5b03a7ab17db6a5a",
+}
+`;
+
+exports[`composed reference WGSL > window attention 1`] = `"1f4a60c27373f6dd"`;

@@ -17,3 +17,14 @@ release-artifacts/
 packages/three-dlss-nr/LICENSE
 packages/three-dlss-nr/NOTICE
 packages/three-dlss-nr/CHANGELOG.md
+
+# Generated from the reference submodule by packages/three-dlss-nr/scripts/bundle-reference.mjs
+packages/three-dlss-nr/vendor/
+
+# fidelity-kit's generated comparisons (metrics, delta heatmaps, viewer index) and the exported parity site
+packages/fidelity-suite/results/index.json
+packages/fidelity-suite/results/image-hashes.json
+packages/fidelity-suite/results/**/*.metrics.json
+packages/fidelity-suite/results/**/*.delta.webp
+packages/fidelity-suite/results/**/*.delta.webp.json
+packages/website/public/parity/

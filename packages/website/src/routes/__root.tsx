@@ -1,6 +1,6 @@
 import { createRootRoute, HeadContent, Link, Outlet, Scripts } from '@tanstack/react-router';
 
-import { GITHUB_URL, UPSTREAM_AUTHOR_URL, UPSTREAM_COMMIT_URL, UPSTREAM_URL } from '@/lib/links';
+import { GITHUB_URL, PARITY_PATH, UPSTREAM_AUTHOR_URL, UPSTREAM_COMMIT_URL, UPSTREAM_URL } from '@/lib/links';
 import appCss from '@/styles.css?url';
 
 export const Route = createRootRoute({
@@ -14,7 +14,10 @@ export const Route = createRootRoute({
         content: 'A port to Three.js (TSL / WebGPU) of OpenDLSS-NR by maan, an open neural rendering network.',
       },
     ],
-    links: [{ rel: 'stylesheet', href: appCss }],
+    links: [
+      { rel: 'stylesheet', href: appCss },
+      { rel: 'icon', type: 'image/svg+xml', href: '/favicon.svg' },
+    ],
   }),
   shellComponent: RootDocument,
   component: RootLayout,
@@ -27,9 +30,15 @@ function RootLayout() {
         <Link to="/" className="font-semibold">
           three-dlss-nr
         </Link>
-        <a href={GITHUB_URL} className="text-sm text-primary underline underline-offset-4">
-          GitHub
-        </a>
+        <nav className="flex items-center gap-4 text-sm">
+          {/* A static site (fidelity-kit), served from public/parity: a plain link, not a router route. */}
+          <a href={PARITY_PATH} className="text-primary underline underline-offset-4">
+            Parity results
+          </a>
+          <a href={GITHUB_URL} className="text-primary underline underline-offset-4">
+            GitHub
+          </a>
+        </nav>
       </header>
       <div className="flex min-h-0 flex-1 flex-col">
         <Outlet />
@@ -52,7 +61,11 @@ function RootLayout() {
           <a href="https://ben3d.ca" className="text-primary underline underline-offset-4">
             Ben Houston
           </a>
-          .
+          . The{' '}
+          <a href={PARITY_PATH} className="text-primary underline underline-offset-4">
+            parity results
+          </a>{' '}
+          compare the three.js ports with OpenDLSS-NR side by side.
         </p>
         <p className="mt-1 text-xs">
           Not affiliated with, endorsed by, or supported by NVIDIA Corporation. &quot;DLSS&quot; is a trademark of

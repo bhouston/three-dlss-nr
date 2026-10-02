@@ -12,5 +12,151 @@ export const UPSTREAM = {
   license: 'MIT',
 } as const;
 
-/** Package version (placeholder until the network port lands). */
+/** Package version. */
 export const VERSION = '0.1.0';
+
+export { NRNetwork, TSL_REQUIREMENTS, tslBackend, type NRNetworkOptions, type NRProgress } from './NRNetwork.js';
+
+export { NRGraph, type NRGraphOptions, type NRGraphPass } from './graph/Graph.js';
+export { windowQueriesFor, type WindowQueries } from './graph/attention.js';
+
+export {
+  NRModel,
+  type FP8MatrixOptions,
+  type NRModelFiles,
+  type NRModelLoadOptions,
+  type NRModelSource,
+  type NRModelTensor,
+} from './model/Model.js';
+export {
+  manifestProblems,
+  parseManifest,
+  validateManifest,
+  type NRManifest,
+  type NRManifestStage,
+  type NRManifestTensor,
+} from './model/manifest.js';
+
+// The frame around the network: features from a three.js render, and the composed output with its history.
+export {
+  createFrameKernels,
+  NRHistory,
+  type FrameKernels,
+  type FrameKernelsBuffers,
+  type Parity,
+} from './frame/history.js';
+export {
+  frameReaders,
+  NRFrameParams,
+  type FrameColorSource,
+  type FrameGeometry,
+  type FrameMotionSource,
+  type FrameReaders,
+  type NRFrameSettings,
+} from './frame/frameInputs.js';
+export { createInputFeatures, type InputFeaturesBuffers, type InputFeaturesSpec } from './frame/inputFeatures.js';
+export { createCompose, type ComposeBuffers, type ComposeSpec } from './frame/compose.js';
+export { createPreprocess, type PreprocessBuffers, type PreprocessSpec } from './kernels/preprocess.js';
+export { kernelWGSL, runKernels } from './tsl/KernelBuilder.js';
+
+export type {
+  ComputeNode,
+  Dim3,
+  F16Matrix,
+  F32Vector,
+  FP8Matrix,
+  GemmF16Buffers,
+  GemmF16Spec,
+  GemmFp8Buffers,
+  GemmSpec,
+  HalfVector,
+  NRKernel,
+  NRTensor,
+  StorageBufferAttribute,
+  TensorFormat,
+  VitAttendBuffers,
+  VitNormalizeBuffers,
+  VitSpec,
+  WindowAttentionBuffers,
+  WindowAttentionSpec,
+} from './types.js';
+
+export {
+  checkNRDeviceLimits,
+  createNRDevice,
+  createNRRenderer,
+  NR_MIN_WORKGROUP_STORAGE,
+  nrDeviceProblems,
+  type NRDevice,
+  type NRDeviceOptions,
+  type NRRendererOptions,
+} from './device.js';
+
+export {
+  alignUp,
+  fusedLayout,
+  geometryFromValid,
+  grid1d,
+  postFusedLayout,
+  preFusedLayout,
+  upsampleFusedLayout,
+  windowPhase,
+  WindowPhases,
+  type FusedLayout,
+  type NRGeometry,
+  type NRLevel,
+} from './geometry.js';
+
+export {
+  attributeBytes,
+  attributeFromBytes,
+  bytesPerValue,
+  createF32Vector,
+  createHalfVector,
+  createTensor,
+  fillBuffer,
+  NRTensors,
+  readBuffer,
+  wordAttribute,
+  writeBuffer,
+} from './tensors.js';
+
+// Backend-neutral network interface (the TSL port and the reference shim, `three-dlss-nr/reference-backend`).
+export {
+  rendererDevice,
+  unmetRequirements,
+  type NRBackend,
+  type NRBackendCreateOptions,
+  type NRBackendFactory,
+  type NRBackendGeometry,
+  type NRBackendId,
+  type NRBackendLimit,
+  type NRBackendMemory,
+  type NRBackendModelSource,
+  type NRBackendRequirements,
+  type NRFrameTiming,
+  type NRManifestLike,
+  type NRModelFilesLike,
+  type NRModelStagesLike,
+  type NRRunOptions,
+  type NRTimingMethod,
+} from './backend/NRBackend.js';
+export { NRFrameTimer, summarizeMilliseconds } from './backend/timing.js';
+
+// The integration pass: a three.js scene through the network onto the canvas (NR on / off / split), any backend.
+export {
+  backendBlendScale,
+  backendBuilder,
+  clampSize,
+  DLSS_NR_DEFAULT_SETTINGS,
+  DLSS_NR_MAX_PIXELS,
+  DlssNrPass,
+  type DlssNrExternalFrame,
+  type DlssNrFrameStats,
+  type DlssNrNetwork,
+  type DlssNrNetworkBuilder,
+  type DlssNrNetworkState,
+  type DlssNrPassOptions,
+  type DlssNrSettings,
+  type DlssNrView,
+} from './integration/DlssNrPass.js';

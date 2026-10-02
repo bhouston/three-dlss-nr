@@ -5,5 +5,14 @@
 **/.tanstack
 coverage
 release-artifacts
-reference
+# The upstream submodule is excluded except for what packages/three-dlss-nr/scripts/bundle-reference.mjs
+# vendors into the reference-wgsl backend: the WebGPU port's src/ and shaders/, and the upstream LICENSE.
+reference/OpenDLSS-NR/*
+!reference/OpenDLSS-NR/LICENSE
+!reference/OpenDLSS-NR/ports
+reference/OpenDLSS-NR/ports/*
+!reference/OpenDLSS-NR/ports/browser-webgpu
+reference/OpenDLSS-NR/ports/browser-webgpu/*
+!reference/OpenDLSS-NR/ports/browser-webgpu/src
+!reference/OpenDLSS-NR/ports/browser-webgpu/shaders
 .git
