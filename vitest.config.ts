@@ -44,6 +44,9 @@ export default defineConfig({
         test: {
           name: 'unit',
           testTimeout: 30_000,
+          // Generating the 141 MiB synthetic model (with SHA-256) in beforeAll takes
+          // well over the 10 s default on CI runners under coverage instrumentation.
+          hookTimeout: 120_000,
           include: ['packages/**/*.test.ts'],
           exclude: [...exclude, '**/*.gpu.test.ts'],
         },
