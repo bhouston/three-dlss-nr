@@ -1,0 +1,45 @@
+{
+  "adapter": "nvidia ampere NVIDIA GeForce RTX 3060 Ti",
+  "warmup": 3,
+  "renderers": {
+    "opendlss-nr": {
+      "method": "timestamp-query",
+      "dispatches": 451,
+      "frames": 10,
+      "gpu": {
+        "min": 56.646656,
+        "median": 56.799744000000004
+      },
+      "wall": {
+        "min": 57.59999999962747,
+        "median": 58.049999999813735
+      }
+    },
+    "three-dlss-nr-tsl": {
+      "method": "timestamp-query",
+      "dispatches": 451,
+      "frames": 10,
+      "gpu": {
+        "min": 91.726848,
+        "median": 92.006912
+      },
+      "wall": {
+        "min": 92.40000000037253,
+        "median": 93.44999999925494
+      }
+    },
+    "three-dlss-nr-shim": {
+      "method": "timestamp-query",
+      "dispatches": 451,
+      "frames": 10,
+      "gpu": {
+        "min": 56.543232,
+        "median": 56.877056
+      },
+      "wall": {
+        "min": 57.20000000111759,
+        "median": 57.90000000037253
+      }
+    }
+  }
+}
