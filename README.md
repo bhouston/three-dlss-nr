@@ -69,6 +69,12 @@ the same device, the same inputs and the same weights:
   so the reference's f16 roundings silently do not happen there. The TSL port never relies on f16 hardware. It rounds
   on f32 bit patterns, so it produces the same bytes on lavapipe as on a real GPU.
 
+**See it side by side:** [three-dlss-nr.ben3d.ca/parity/](https://three-dlss-nr.ben3d.ca/parity/) shows the
+reference running standalone, the TSL port and the reference shim on the same frames (the head scan and two
+procedural scenes, at 256x256 and 512x512): the composed output, the head and four block boundaries, all byte-identical,
+with every raw tensor compared and per-scene GPU times. It is built with [fidelity-kit](https://fidelity-kit.ben3d.ca)
+from [`packages/fidelity-suite`](packages/fidelity-suite), and CI checks its committed verdicts.
+
 A consequence: **the TSL port does not need `shader-f16`**, while the reference does. How the kernels are written and
 tested is in [`src/README-internals.md`](packages/three-dlss-nr/src/README-internals.md).
 
@@ -228,6 +234,7 @@ pnpm build && node scripts/bench-backends.mjs --sizes 512x512,1280x720
 | [`packages/three-dlss-nr`](packages/three-dlss-nr)                                                 | The library, published to npm. See its [README](packages/three-dlss-nr/README.md).                                        |
 | [`packages/three-dlss-nr/src/README-internals.md`](packages/three-dlss-nr/src/README-internals.md) | How kernels are written in TSL and tested against the reference, and the TSL pitfalls.                                    |
 | [`packages/website`](packages/website)                                                             | The demo site, deployed to Cloud Run.                                                                                     |
+| [`packages/fidelity-suite`](packages/fidelity-suite)                                               | The side-by-side parity suite (fidelity-kit) and its committed results, served at `/parity/`.                             |
 | [`reference/OpenDLSS-NR`](reference/OpenDLSS-NR)                                                   | Upstream OpenDLSS-NR at `9d08f41` (git submodule, read-only), used for parity tests and bundled by the reference backend. |
 | [`docs/`](docs)                                                                                    | Screenshots and [candidate head assets](docs/suggested-assets.md) for the demo, with their licenses.                      |
 | [`scripts/`](scripts)                                                                              | Benchmark, bundle-size gate, release and CI helpers.                                                                      |
@@ -243,16 +250,18 @@ pnpm build
 pnpm dev           # library watch + demo site at http://localhost:3300
 ```
 
-| Command               | What it does                                                                                                    |
-| --------------------- | --------------------------------------------------------------------------------------------------------------- |
-| `pnpm build`          | Bundle the reference port into `vendor/`, then build the library and the website                                |
-| `pnpm tsc`            | Type-check the workspace                                                                                        |
-| `pnpm lint`           | Oxlint                                                                                                          |
-| `pnpm format`         | Oxfmt (`pnpm format:check` in CI)                                                                               |
-| `pnpm test`           | Type-check, then the unit tests (Node) with coverage                                                            |
-| `pnpm test:gpu`       | The WebGPU tests in Node: the `gpu` project, then the whole network in the `gpu-network` project                |
-| `pnpm size`           | Minified gzip bundle-size gate, `three` external: 40 kB for `three-dlss-nr`, 8 kB for `three-dlss-nr/synthetic` |
-| `pnpm bench:backends` | Benchmark TSL against reference WGSL in real Chrome (`--sizes 512x512,1280x720`, `--model <dir>`)               |
+| Command               | What it does                                                                                                          |
+| --------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| `pnpm build`          | Bundle the reference port into `vendor/`, then build the library and the website                                      |
+| `pnpm tsc`            | Type-check the workspace                                                                                              |
+| `pnpm lint`           | Oxlint                                                                                                                |
+| `pnpm format`         | Oxfmt (`pnpm format:check` in CI)                                                                                     |
+| `pnpm test`           | Type-check, then the unit tests (Node) with coverage                                                                  |
+| `pnpm test:gpu`       | The WebGPU tests in Node: the `gpu` project, then the whole network in the `gpu-network` project                      |
+| `pnpm size`           | Minified gzip bundle-size gate, `three` external: 40 kB for `three-dlss-nr`, 8 kB for `three-dlss-nr/synthetic`       |
+| `pnpm bench:backends` | Benchmark TSL against reference WGSL in real Chrome (`--sizes 512x512,1280x720`, `--model <dir>`)                     |
+| `pnpm fidelity:check` | Check the committed parity results (every tensor and image bit-exact); `fidelity:generate` regenerates them in Chrome |
+| `pnpm fidelity:dev`   | Browse the parity results locally with fidelity-kit                                                                   |
 
 **GPU tests in Node.** `pnpm test:gpu` runs the `*.gpu.test.ts` files on headless WebGPU (Google's Dawn, via
 [`vitest-environment-webgpu-node`](https://github.com/bhouston/vitest-gpu)), with no browser. Dawn uses the platform
@@ -276,6 +285,7 @@ node packages/three-dlss-nr/test/browser/run-network-parity-chrome.mjs --sizes 6
 node packages/three-dlss-nr/test/browser/run-shim-parity-chrome.mjs                            # reference backend vs standalone upstream
 node packages/three-dlss-nr/test/browser/run-fp8-gemm-chrome.mjs                               # FP8 GEMM against the CPU oracle
 pnpm bench:backends                                                                            # TSL vs reference WGSL timings
+pnpm fidelity:generate                                                                         # the side-by-side parity results (packages/fidelity-suite)
 ```
 
 ## Contributing
