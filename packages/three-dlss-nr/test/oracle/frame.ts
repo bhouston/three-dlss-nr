@@ -22,6 +22,12 @@ export interface FeatureReport {
   maxRelative: number;
   /** Lanes 3..15: values not bit-identical. */
   mismatches: number;
+  /**
+   * Lanes 3..15: largest absolute difference, lanes 4-9 measured on the code value they centre (`lane * 8 + 0.5`, in
+   * [0, 1]). One rounding step of a code value near 1 is 2^-11; the reprojected history is a weighted sum with
+   * negative Catmull-Rom weights, so near 0 an f32 ulp of its terms is a large relative error but a tiny absolute one.
+   */
+  maxAbsolute: number;
   summary: string;
 }
 
@@ -32,6 +38,7 @@ export function compareFeatures(actual: Float32Array, expected: Float32Array, ro
   let noiseMismatches = 0;
   let maxRelative = 0;
   let mismatches = 0;
+  let maxAbsolute = 0;
   let first = '';
   for (let row = 0; row < rows; ++row) {
     for (let lane = 0; lane < 16; ++lane) {
@@ -49,13 +56,15 @@ export function compareFeatures(actual: Float32Array, expected: Float32Array, ro
       exactLanes[lane - 3] = false;
       mismatches += 1;
       maxRelative = Math.max(maxRelative, Math.abs(a - e) / Math.max(Math.abs(e), 2 ** -14));
+      const code = (value: number) => (lane >= 4 && lane <= 9 ? value * 8 + 0.5 : value);
+      maxAbsolute = Math.max(maxAbsolute, Math.abs(code(a) - code(e)));
       if (!first) first = `; first: row ${row} lane ${lane} got ${a} want ${e}`;
     }
   }
   const summary =
-    `lanes 3-15: ${mismatches} of ${rows * 13} differ (max relative ${maxRelative.toExponential(2)})${first}; ` +
+    `lanes 3-15: ${mismatches} of ${rows * 13} differ (max absolute ${maxAbsolute.toExponential(2)}, relative ${maxRelative.toExponential(2)})${first}; ` +
     `noise lanes: ${noiseMismatches} of ${rows * 3} differ (max ${noiseMaxHalfUlps} half ulps)`;
-  return { exactLanes, noiseMaxHalfUlps, noiseMismatches, maxRelative, mismatches, summary };
+  return { exactLanes, noiseMaxHalfUlps, noiseMismatches, maxRelative, mismatches, maxAbsolute, summary };
 }
 
 /** Largest |a - e| / max(|e|, floor) over two arrays, with the count of non-identical values. */

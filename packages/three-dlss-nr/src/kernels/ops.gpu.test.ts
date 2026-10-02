@@ -18,7 +18,7 @@ import {
   type OracleLevels,
 } from '../../test/oracle/ops.js';
 import { RefKernels, type RefTensor } from '../../test/reference/refKernels.js';
-import { expectIntegerComparisons, expectNoApproximations } from '../../test/wgsl.js';
+import { expectIntegerComparisons, expectNoApproximations, normalizeWGSL } from '../../test/wgsl.js';
 import {
   createConvertF32ToF16,
   createCopyWords,
@@ -367,5 +367,35 @@ describe('copy_words', () => {
     const r = diffArrays(captured, expected);
     expect(r.mismatches, describeMismatches('capture', r, 2)).toBe(0);
     expect((await readBuffer(gpu.renderer, pooled)).every((b) => b === 0)).toBe(true);
+  });
+});
+
+describe('generated WGSL', () => {
+  it('one snapshot per kernel kind (catches codegen drift on a three bump)', () => {
+    const t = (format: TensorFormat, rows = 64, channels = 32) => ours(`snap ${format}`, rows, channels, format);
+    const levels = { channels: 32, inWidth: 8, inHeight: 8, outWidth: 4, outHeight: 4 };
+    const kernels = [
+      createConvertF32ToF16(
+        { count: 64 * 16, label: 'convert' },
+        { input: t('f32', 64, 16), output: t('f16', 64, 16) },
+      ),
+      createDownsample({ ...levels, label: 'pool' }, { input: t('f16'), output: t('e4') }),
+      createUpsampleResidual(
+        { ...levels, inWidth: 4, inHeight: 4, outWidth: 8, outHeight: 8, label: 'merge' },
+        {
+          input: t('f16'),
+          skip: t('e4'),
+          scale: createHalfVector(new Uint16Array(32)),
+          output: t('e4'),
+          outputF16: t('f16'),
+        },
+      ),
+      createPostBlend(
+        { ...levels, inWidth: 4, inHeight: 4, outWidth: 8, outHeight: 8, label: 'post blend' },
+        { input: t('e4'), skip: t('e4'), scales: createHalfVector(new Uint16Array(64)), output: t('e4') },
+      ),
+      createCopyWords({ label: 'capture' }, { source: t('e4'), target: t('e4') }),
+    ];
+    for (const k of kernels) expect(normalizeWGSL(kernelWGSL(gpu.renderer, k))).toMatchSnapshot(k.kind);
   });
 });
