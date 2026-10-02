@@ -9,7 +9,8 @@
 //
 // What it does: bundles fp8GemmPage.ts with esbuild, serves it on 127.0.0.1, opens it in Chrome (DevTools protocol, no dependency),
 // runs the seven FP8 cases of refKernels.gpu.test.ts (same inputs, byte for byte; fp8Cases.ts), and compares every
-// published byte / half with oracleGemmFp8. Exit code 1 on any difference.
+// published byte / half with oracleGemmFp8, and the reference's GPU-built SiLU table with ours (tables.ts). Exit code 1
+// on any difference.
 //
 // Usage (from the repository root):
 //   node packages/three-dlss-nr/test/browser/run-fp8-gemm-chrome.mjs [--chrome <path>] [--headed] [--out results.json]
@@ -128,7 +129,7 @@ await build({
   alias,
   logLevel: 'warning',
 });
-const { fp8OracleResults } = await import(pathToFileURL(join(outDir, 'oracle.mjs')).href);
+const { fp8OracleResults, fp8OracleSiluCodes } = await import(pathToFileURL(join(outDir, 'oracle.mjs')).href);
 
 const html = '<!doctype html><meta charset="utf-8"><title>fp8 gemm</title><script src="page.js"></script>';
 const server = createServer((request, response) => {
@@ -172,6 +173,20 @@ for (const [i, ours] of result.cases.entries()) {
         (diffs.length ? `: ${diffs.slice(0, 8).join(', ')}` : ''),
     );
   }
+}
+// The SiLU table, for every half input (NaN inputs excluded: WGSL leaves min/max of NaN unspecified).
+{
+  const want = fp8OracleSiluCodes();
+  const diffs = [];
+  result.siluCodes.forEach((code, h) => {
+    const nan = (h & 0x7c00) === 0x7c00 && (h & 0x3ff) !== 0;
+    if (!nan && code !== want[h]) diffs.push(`[${hex(h, 4)}] hw ${hex(code, 2)} oracle ${hex(want[h], 2)}`);
+  });
+  failures += diffs.length;
+  console.log(
+    `${diffs.length === 0 ? 'bit-exact' : 'DIFFERS  '} SiLU table (packedSiluTable): ${diffs.length} of 63490 non-NaN halves` +
+      (diffs.length ? `: ${diffs.slice(0, 8).join(', ')}` : ''),
+  );
 }
 const out = option('--out');
 if (out) writeFileSync(out, JSON.stringify({ ...result, oracle: expected }));

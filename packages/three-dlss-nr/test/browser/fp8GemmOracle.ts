@@ -2,8 +2,9 @@
 //
 // Part of three-dlss-nr (a port to three.js of OpenDLSS-NR by maan, MIT).
 
+import { siluE4CodeTable } from '../../src/numerics/oracle.js';
 import { oracleGemmFp8 } from '../oracle/gemm.js';
-import { fp8ReferenceCases } from './fp8Cases.js';
+import { fp8BrowserCases } from './fp8Cases.js';
 
 export interface OracleCaseResult {
   label: string;
@@ -12,7 +13,7 @@ export interface OracleCaseResult {
 }
 
 export function fp8OracleResults(): OracleCaseResult[] {
-  return fp8ReferenceCases().map((c) => {
+  return fp8BrowserCases().map((c) => {
     const r = oracleGemmFp8({
       ...c,
       residual: c.residualFormat ? { format: c.residualFormat, data: c.residualData! } : undefined,
@@ -25,3 +26,6 @@ export function fp8OracleResults(): OracleCaseResult[] {
     };
   });
 }
+
+/** The oracle's SiLU publication table (what src/kernels/tables.ts uploads). */
+export const fp8OracleSiluCodes = (): number[] => Array.from(siluE4CodeTable());

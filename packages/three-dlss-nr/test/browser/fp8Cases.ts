@@ -7,7 +7,7 @@
 // Keep it in step with refKernels.gpu.test.ts.
 
 import * as oracle from '../../src/numerics/oracle.js';
-import type { OracleGemmFp8Args } from '../oracle/gemm.js';
+import { GEMM_ROLES, gemmData, type OracleGemmFp8Args } from '../oracle/gemm.js';
 
 export interface Fp8Case {
   label: string;
@@ -119,3 +119,31 @@ export function fp8ReferenceCases(): Fp8Case[] {
     };
   });
 }
+
+/** Every graph role of the GEMM tests (test/oracle/gemm.ts `GEMM_ROLES`, inputs from `gemmData`), as cases. */
+export function fp8RoleCases(): Fp8Case[] {
+  return GEMM_ROLES.map((role) => {
+    const data = gemmData(role);
+    return {
+      label: `role: ${role.label}`,
+      rows: data.spec.rows,
+      k: data.spec.k,
+      n: data.spec.n,
+      batches: data.spec.batches,
+      broadcast: data.spec.broadcast,
+      partition: data.spec.partition,
+      silu: data.spec.silu,
+      output: data.spec.output,
+      residualFormat: data.spec.residual?.format,
+      inputChannels: data.inputChannels,
+      outputChannels: data.outputChannels,
+      input: data.input,
+      weights: data.weights,
+      scale: data.scale,
+      residualData: data.residual,
+    };
+  });
+}
+
+/** What the browser harness runs: the CI cases, then every role. */
+export const fp8BrowserCases = (): Fp8Case[] => [...fp8ReferenceCases(), ...fp8RoleCases()];

@@ -11,7 +11,7 @@ import { readBack, requestDevice, storageFrom } from '@ref/gpu.js';
 import { Matmul } from '@ref/matmul/index.js';
 import { Kernels, Recorder, Tensors } from '@ref/passes.js';
 
-import { fp8ReferenceCases, type Fp8Case } from './fp8Cases.js';
+import { fp8BrowserCases, type Fp8Case } from './fp8Cases.js';
 
 const SENTINEL_BYTE = 0xcd;
 
@@ -27,6 +27,8 @@ export interface PageResult {
   adapter: string;
   features: string[];
   cases: PageCaseResult[];
+  /** The reference's GPU-built packed SiLU table (matmul/packed-activation.js), 65536 E4 codes. */
+  siluCodes: number[];
 }
 
 const alignUp = (value: number, to: number): number => Math.ceil(value / to) * to;
@@ -114,8 +116,10 @@ async function run(): Promise<PageResult> {
   const kernels = await Kernels.create(device);
   const matmul = await Matmul.create(device);
   const cases: PageCaseResult[] = [];
-  for (const c of fp8ReferenceCases()) cases.push(await runCase(device, kernels, matmul, c));
+  for (const c of fp8BrowserCases()) cases.push(await runCase(device, kernels, matmul, c));
+  const siluCodes = Array.from(new Uint8Array(await readBack(device, matmul.packedSiluTable, 65536)));
   return {
+    siluCodes,
     adapter: `${adapter.vendor ?? '?'} ${adapter.architecture ?? ''} ${adapter.description ?? ''}`.trim(),
     features: [...device.features].toSorted(),
     cases,
