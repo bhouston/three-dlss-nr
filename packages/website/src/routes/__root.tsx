@@ -14,7 +14,10 @@ export const Route = createRootRoute({
         content: 'A port to Three.js (TSL / WebGPU) of OpenDLSS-NR by maan, an open neural rendering network.',
       },
     ],
-    links: [{ rel: 'stylesheet', href: appCss }],
+    links: [
+      { rel: 'stylesheet', href: appCss },
+      { rel: 'icon', type: 'image/svg+xml', href: '/favicon.svg' },
+    ],
   }),
   shellComponent: RootDocument,
   component: RootLayout,

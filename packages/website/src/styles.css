@@ -8,6 +8,8 @@
   --color-primary: var(--primary);
   --color-muted-foreground: var(--muted-foreground);
   --color-border: var(--border);
+  --color-muted: var(--muted);
+  --color-warning: var(--warning);
 }
 
 :root {
@@ -16,6 +18,8 @@
   --primary: oklch(0.379 0.146 265.522);
   --muted-foreground: oklch(0.552 0.016 285.938);
   --border: oklch(0.92 0.004 286.32);
+  --muted: oklch(0.967 0.001 286.375);
+  --warning: oklch(0.555 0.163 48.998);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -25,6 +29,8 @@
     --primary: oklch(0.707 0.165 254.624);
     --muted-foreground: oklch(0.705 0.015 286.067);
     --border: oklch(1 0 0 / 10%);
+    --muted: oklch(0.21 0.006 285.885);
+    --warning: oklch(0.828 0.189 84.429);
   }
 }
 
