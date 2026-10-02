@@ -12,8 +12,51 @@ export const UPSTREAM = {
   license: 'MIT',
 } as const;
 
-/** Package version (placeholder until the network port lands). */
+/** Package version. */
 export const VERSION = '0.1.0';
+
+export { NRNetwork, type NRNetworkOptions, type NRProgress, type NRRunOptions } from './NRNetwork.js';
+
+export { NRGraph, type NRGraphOptions, type NRGraphPass } from './graph/Graph.js';
+
+export {
+  NRModel,
+  type FP8MatrixOptions,
+  type NRModelFiles,
+  type NRModelLoadOptions,
+  type NRModelSource,
+  type NRModelTensor,
+} from './model/Model.js';
+export {
+  manifestProblems,
+  parseManifest,
+  validateManifest,
+  type NRManifest,
+  type NRManifestStage,
+  type NRManifestTensor,
+} from './model/manifest.js';
+
+// The frame around the network: features from a three.js render, and the composed output with its history.
+export {
+  createFrameKernels,
+  NRHistory,
+  type FrameKernels,
+  type FrameKernelsBuffers,
+  type Parity,
+} from './frame/history.js';
+export {
+  frameReaders,
+  NRFrameParams,
+  type FrameColorSource,
+  type FrameGeometry,
+  type FrameMotionSource,
+  type FrameReaders,
+  type NRFrameSettings,
+} from './frame/frameInputs.js';
+export { createInputFeatures, type InputFeaturesBuffers, type InputFeaturesSpec } from './frame/inputFeatures.js';
+export { createCompose, type ComposeBuffers, type ComposeSpec } from './frame/compose.js';
+export { createPreprocess, type PreprocessBuffers, type PreprocessSpec } from './kernels/preprocess.js';
+export { kernelWGSL, runKernels } from './tsl/KernelBuilder.js';
 
 export type {
   ComputeNode,
