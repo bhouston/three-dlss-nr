@@ -71,15 +71,38 @@ const LOGGED: ModelRequest['method'][] = [
   'auxOffset',
 ];
 
+/** One dispatch of the reference graph as its recorder sees it. */
+export interface RecordedPass {
+  label: string;
+  /** The entry point (`Recorder.pass`) or the specialized kernel's name (`gemm_fp8`, `window_attend`). */
+  kind: string;
+  /** Workgroup counts `[x, y, z]`. */
+  dispatch: [number, number, number];
+}
+
+const dim3 = (groups: number | number[]): [number, number, number] => {
+  const [x, y = 1, z = 1] = Array.isArray(groups) ? groups : [groups];
+  return [x, y, z];
+};
+
 /**
  * Record the reference graph for a valid size against `model` (a loaded reference `Model`) without a GPU pipeline:
- * returns every weight request in order, the dispatch labels, and the copy count.
+ * returns every weight request in order, the dispatch labels, every dispatch with its kind and size, and the
+ * boundary captures in order (`capture <name>` after the index of the dispatch they follow).
  */
 export function recordGraphRequests(
   model: any,
   width: number,
   height: number,
-): { requests: ModelRequest[]; dispatches: string[] } {
+  {
+    captureBoundaries = false,
+    onAllocate,
+  }: {
+    captureBoundaries?: boolean;
+    /** Called for every tensor the graph allocates (`Tensors.allocate` arguments). */
+    onAllocate?: (label: string, rows: number, channels: number, format: string) => void;
+  } = {},
+): { requests: ModelRequest[]; dispatches: string[]; passes: RecordedPass[]; captures: string[] } {
   const requests: ModelRequest[] = [];
   const logged = Object.create(model);
   for (const method of LOGGED) {
@@ -90,32 +113,53 @@ export function recordGraphRequests(
     };
   }
   const dispatches: string[] = [];
+  const passes: RecordedPass[] = [];
+  const captures: string[] = [];
   const recorder = {
-    pass: (_entry: string, _buffers: unknown, _params: unknown, _groups: unknown, label: string) =>
-      dispatches.push(label),
-    specialized: (_p: unknown, _k: unknown, _b: unknown, _params: unknown, _groups: unknown, label: string) =>
-      dispatches.push(label),
-    copy: () => {},
+    pass: (entry: string, _buffers: unknown, _params: unknown, groups: number | number[], label: string) => {
+      dispatches.push(label);
+      passes.push({ label, kind: entry, dispatch: dim3(groups) });
+    },
+    specialized: (
+      _p: unknown,
+      { kernel }: { kernel: string },
+      _b: unknown,
+      _params: unknown,
+      groups: number[],
+      label: string,
+    ) => {
+      dispatches.push(label);
+      passes.push({ label, kind: kernel, dispatch: dim3(groups) });
+    },
+    copy: (_from: unknown, _to: unknown, _bytes: number, label: string) => {
+      captures.push(`${dispatches.length - 1} ${label}`);
+    },
   };
   const stub = {};
   const geometry = geometryFromValid(width, height);
-  const graph = new Graph({
-    device: null,
-    kernels: { pipelineLayout: stub, gemmPipelineLayout: stub },
-    matmul: { pipeline: () => stub, siluTableFor: () => stub, weightMetadata: stub },
-    window: { pipeline: () => stub },
-    tensors: {
-      allocate: (label: string, rows: number, channels: number, format: string) => ({
-        label,
-        rows,
-        channels,
-        format,
-        buffer: stub,
-      }),
+  const graph = new Graph(
+    {
+      device: null,
+      kernels: { pipelineLayout: stub, gemmPipelineLayout: stub },
+      matmul: { pipeline: () => stub, siluTableFor: () => stub, weightMetadata: stub },
+      window: { pipeline: () => stub },
+      tensors: {
+        allocate: (label: string, rows: number, channels: number, format: string) => {
+          onAllocate?.(label, rows, channels, format);
+          return {
+            label,
+            rows,
+            channels,
+            format,
+            buffer: stub,
+          };
+        },
+      },
+      model: logged,
+      geometry,
     },
-    model: logged,
-    geometry,
-  });
+    { captureBoundaries },
+  );
   graph.record(recorder, {
     label: 'input features',
     rows: geometry.fullRows,
@@ -123,7 +167,7 @@ export function recordGraphRequests(
     format: 'f32',
     buffer: stub,
   });
-  return { requests, dispatches };
+  return { requests, dispatches, passes, captures };
 }
 
 /** Reads a reference buffer's bytes (a `FakeBuffer`'s data, or a GPU read-back). */

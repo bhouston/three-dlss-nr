@@ -9,7 +9,7 @@
     "tsc": "node packages/three-dlss-nr/scripts/bundle-reference.mjs && tsc -b",
     "dev": "pnpm --parallel --filter three-dlss-nr --filter website dev",
     "test": "pnpm tsc && vitest run --project unit --coverage",
-    "test:gpu": "node packages/three-dlss-nr/scripts/bundle-reference.mjs && vitest run --project gpu",
+    "test:gpu": "node packages/three-dlss-nr/scripts/bundle-reference.mjs && vitest run --project gpu --project gpu-network",
     "format": "oxfmt .",
     "format:check": "oxfmt --check .",
     "lint": "oxlint .",

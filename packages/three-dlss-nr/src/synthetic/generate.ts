@@ -93,8 +93,15 @@ const codeTable = (gain: number, fanIn: number): Uint8Array => {
   return table;
 };
 
+/** The skip-scale range of a block: the ViT's (31-38), the decoder window blocks' (48-70), or the general one. */
+export function skipScaleRange(block: number): readonly [number, number] {
+  if (block >= 31 && block <= 38) return SYNTHETIC_RANGES.vitSkipScale;
+  if (block >= 48) return SYNTHETIC_RANGES.decoderSkipScale;
+  return SYNTHETIC_RANGES.skipScale;
+}
+
 /** Fill `region` of `bytes` (a record) from the xorshift state `state`; returns the new state. */
-function fillRegion(bytes: Uint8Array, region: NRRegion, state: number): number {
+function fillRegion(bytes: Uint8Array, region: NRRegion, state: number, block: number): number {
   let x = state;
   const next = (): number => {
     x = (x ^ (x << 13)) >>> 0;
@@ -132,8 +139,7 @@ function fillRegion(bytes: Uint8Array, region: NRRegion, state: number): number 
       break;
     }
     case 'skip-scale':
-      for (let i = 0; i < region.count; ++i)
-        putHalf(region.offset + i * 2, uniform(next(), SYNTHETIC_RANGES.skipScale));
+      for (let i = 0; i < region.count; ++i) putHalf(region.offset + i * 2, uniform(next(), skipScaleRange(block)));
       break;
     case 'prior':
       for (let i = 0; i < region.heads * 4096; ++i)
@@ -160,7 +166,7 @@ export function generateSyntheticRecord(record: NRRecordLayout, seed = 1): Uint8
     if (region.offset + regionByteLength(region) > record.byteLength) {
       throw new Error(`region at ${region.offset} exceeds ${record.name}`);
     }
-    state = fillRegion(bytes, region, state);
+    state = fillRegion(bytes, region, state, record.block);
   }
   return bytes;
 }

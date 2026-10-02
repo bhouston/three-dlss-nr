@@ -147,6 +147,57 @@ lavapipe and on hardware.
 
 Binding names: `kernel()` names each binding `nr_<declared name>` instead of three's `NodeBuffer_<id>`.
 
+## The graph and the network
+
+`graph/Graph.ts` (`NRGraph`) is the port of `graph.js` `record` (lines 354-580). It builds 451 `NRKernel`s per valid
+size. Their order, labels, kinds and workgroup counts equal a record-only run of the reference graph
+(`graph/Graph.test.ts` checks this at 64x64, 300x500 and 512x512, through `test/reference/refModel.ts`
+`recordGraphRequests`). Its tensor labels, shapes and formats equal the reference's too, so `readTensor(label)`
+names the same tensor on both sides.
+
+- Weights come from `NRModel`. The GEMM skip scales, which the reference reads at a byte offset into the stage
+  buffer, come from `auxVector(tensor, offset, n)`. The post blend's two scales are one `auxPair`.
+- Boundary captures (`captureBoundaries`) are `copy_words` kernels inside the one pass. There are 79 of them:
+  `block-0` to `block-69` and the nine `transition-a-b` / `pooled-a-b`. A capture is not a dispatch.
+  `NRGraphPass.index` is the index of the dispatch it follows, so `run({ until })` runs the first `until`
+  dispatches and their captures, with the same index as the reference's recorder.
+- `graph/attention.ts` is the graph's only link to the attention kernels. `windowQueriesFor(device)` picks 16
+  queries per workgroup on devices that cannot run 512 invocations. The bytes are the same; the dispatch size is
+  not.
+
+`NRNetwork.ts` implements `NRBackend` (`id: 'tsl'`, factory `tslBackend`).
+
+- A frame is one `renderer.compute(nodes)`.
+- `create` compiles every node up front, one at a time, because three's progress callback needs `ProgressEvent`,
+  which Node lacks.
+  - Expect about 4-5 minutes on D3D12/FXC in Node at 64x64, most of it FXC.
+- A model passed as an `NRModel` is borrowed and never disposed. Load it once and share it across resizes.
+- `writeFeatures` writes the GPU buffer with `queue.writeBuffer` once it exists.
+
+### Full-network parity (real Chrome)
+
+`node packages/three-dlss-nr/test/browser/run-network-parity-chrome.mjs [--sizes 64x64,512x512] [--golden] [--stats]`
+runs the reference `Network` (its own WGSL, fetched from the submodule) and `NRNetwork` on one device in one page
+(`networkParityPage.ts`), with the synthetic model and `syntheticFeatures`. It compares all 79 boundaries, the three
+post tensors and the head, byte for byte, and checks that a second run of each gives the same bytes. It also prints
+the reference's per-boundary statistics, which are the synthetic-weights calibration gate.
+
+- `--golden` writes our digests to `test/network/goldenDigests.ts`.
+- `network.synthetic.gpu.test.ts` then checks the network against those digests in Node on any device, including CI
+  lavapipe. The TSL port never uses f16 hardware.
+- `--bisect N` runs both networks truncated after dispatch N and compares every tensor label both allocate.
+- `--stats-only` runs the reference alone and checks the calibration gate. It is fast because nothing is compiled
+  through TSL. Use it when changing `synthetic/gains.ts`, then re-pin the stage hashes (`generate.test.ts`) and
+  rerun with `--golden`. The skip-scale ranges are per family (general, ViT, decoder window blocks): the residual
+  stream's gain per block is steep in the mean scale.
+- Results on the dev machine (RTX 3060 Ti, Chrome stable, D3D12 + DXC): at 64x64 and at 512x512, 83 of 83 tensors
+  are bit-exact (79 boundaries, `post merge`, `post merge raw`, `post block raw`, head), repeat runs are identical,
+  and 79 of 79 boundaries are in calibration range.
+- In Node, `network.synthetic.gpu.test.ts` runs 64x64 by default. 512x512 needs `NR_FULL=1`: its single
+  451-dispatch command buffer can trip the Windows driver timeout (TDR) on D3D12/FXC when the GPU is busy.
+- `network.real.gpu.test.ts` runs the reference's own `loadFixture` / `runParity` on `NRNetwork`. It needs
+  `NR_WEIGHTS` (a model directory) and `NR_FIXTURES` (a fixture directory, or a directory of them).
+
 ## Backends: the native TSL port and the reference shim
 
 `src/backend/NRBackend.ts` defines `NRBackend` / `NRBackendFactory`. That is the network API of design chunk E, plus
