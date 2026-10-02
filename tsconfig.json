@@ -6,6 +6,7 @@
   "references": [
     { "path": "./packages/three-dlss-nr" },
     { "path": "./packages/three-dlss-nr/tsconfig.test.json" },
-    { "path": "./packages/website" }
+    { "path": "./packages/website" },
+    { "path": "./packages/fidelity-suite" }
   ]
 }

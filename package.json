@@ -18,7 +18,11 @@
     "size": "node scripts/check-bundle-size.mjs",
     "release": "semantic-release",
     "release:check": "node --test scripts/release.test.mjs",
-    "bench:backends": "node scripts/bench-backends.mjs"
+    "bench:backends": "node scripts/bench-backends.mjs",
+    "fidelity:generate": "pnpm --filter fidelity-suite generate",
+    "fidelity:check": "node packages/fidelity-suite/scripts/check.mjs",
+    "fidelity:dev": "pnpm --filter fidelity-suite dev",
+    "fidelity:build": "pnpm --filter fidelity-suite build"
   },
   "devDependencies": {
     "@anolilab/semantic-release-pnpm": "^8.1.25",

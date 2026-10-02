@@ -1,0 +1,52 @@
+{
+  "title": "three-dlss-nr parity: OpenDLSS-NR reference vs the three.js ports",
+  "renderers": [
+    {
+      "id": "opendlss-nr",
+      "label": "OpenDLSS-NR (reference WebGPU port, standalone)",
+      "reference": true
+    },
+    {
+      "id": "three-dlss-nr-tsl",
+      "label": "three-dlss-nr: native TSL port"
+    },
+    {
+      "id": "three-dlss-nr-shim",
+      "label": "three-dlss-nr: reference WGSL shim"
+    }
+  ],
+  "outputs": [
+    {
+      "id": "output",
+      "label": "Composed output"
+    },
+    {
+      "id": "input",
+      "label": "Input proxy"
+    },
+    {
+      "id": "head-rgb",
+      "label": "Head RGB residual"
+    },
+    {
+      "id": "blend-logit",
+      "label": "Blend weight"
+    },
+    {
+      "id": "block-0",
+      "label": "Block 0 (full field, 32 ch)"
+    },
+    {
+      "id": "block-14",
+      "label": "Block 14 (encoder 128)"
+    },
+    {
+      "id": "vit-38",
+      "label": "ViT output (block 38)"
+    },
+    {
+      "id": "block-69",
+      "label": "Block 69 (decoder 32)"
+    }
+  ]
+}

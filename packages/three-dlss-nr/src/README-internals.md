@@ -290,9 +290,9 @@ Dawn in Node has no `shader-f16` on the Windows dev machine, so the shim runs in
 
   Cap the demo's internal resolution as the design says: at most 1280x720 valid.
 
-- **Fidelity suite.**
-  - A renderer for the shim beside `opendlss-nr-webgpu` (standalone) and `three-dlss-nr` (TSL) is optional: the
-    parity check above already shows the shim is byte-identical to the standalone reference.
+- **Fidelity suite** (`packages/fidelity-suite`, published at `/parity/`; see its README).
+  - Three renderers per scene: `opendlss-nr` (standalone reference), `three-dlss-nr-tsl` and `three-dlss-nr-shim`,
+    on the same CPU-built features from a three.js render.
   - To compare quality, run `tsl` and `reference-wgsl` through `NRBackend` on the same `writeFeatures` input, then
     compare `readHead` and `readBoundary(name)`. Boundary names are the reference's.
   - The shim needs `shader-f16`. In Node it only runs where Dawn exposes that feature, and lavapipe's f16 results are

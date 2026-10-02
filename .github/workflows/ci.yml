@@ -67,6 +67,11 @@ jobs:
       - name: Unit tests with coverage gate
         run: pnpm test
 
+      # The committed side-by-side parity results (packages/fidelity-suite/results): every renderer bit-exact against
+      # the reference on every tensor and image. No GPU needed; regenerating them needs Chrome and hardware f16.
+      - name: Parity results check
+        run: pnpm fidelity:check
+
       - name: Release tooling tests
         run: pnpm release:check
 
