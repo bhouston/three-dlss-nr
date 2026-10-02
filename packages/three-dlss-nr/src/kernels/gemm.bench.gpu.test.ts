@@ -1,4 +1,5 @@
-// GEMM timings at the 512x512 network's shapes (field 576x512). Opt-in: NR_BENCH=1 pnpm test:gpu.
+// GEMM timings at the 512x512 network's shapes (field 576x512). Opt-in: NR_BENCH=1 pnpm test:gpu --silent=false.
+// Meaningful only on an idle GPU: other processes time-slice it and inflate every number (seen: 10-30x).
 //
 // Part of three-dlss-nr (a port to three.js of OpenDLSS-NR by maan, MIT). Wall-clock per dispatch: each kernel is
 // dispatched `repeat` times in one compute pass and the queue is drained; the first (compile) run is not timed.
@@ -85,7 +86,7 @@ async function time(kernel: NRKernel, repeat = 4, trials = 25): Promise<number> 
 }
 
 describe.skipIf(!process.env.NR_BENCH)('GEMM timings at 512x512 (field 576x512)', () => {
-  it('FP8 and f16 GEMMs per dispatch', async () => {
+  it('FP8 and f16 GEMMs per dispatch', { timeout: 900_000 }, async () => {
     const L0 = 576 * 512;
     const cases: [string, () => NRKernel, number][] = [
       ['L0 expand 32->128 SiLU', () => fp8(L0, 32, 128, { silu: true }), 7],
