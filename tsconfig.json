@@ -3,5 +3,9 @@
   "compilerOptions": { "composite": true },
   "files": [],
   "include": [],
-  "references": [{ "path": "./packages/three-dlss-nr" }, { "path": "./packages/website" }]
+  "references": [
+    { "path": "./packages/three-dlss-nr" },
+    { "path": "./packages/three-dlss-nr/tsconfig.test.json" },
+    { "path": "./packages/website" }
+  ]
 }
