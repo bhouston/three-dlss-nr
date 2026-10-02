@@ -186,6 +186,15 @@ the reference's per-boundary statistics, which are the synthetic-weights calibra
 - `network.synthetic.gpu.test.ts` then checks the network against those digests in Node on any device, including CI
   lavapipe. The TSL port never uses f16 hardware.
 - `--bisect N` runs both networks truncated after dispatch N and compares every tensor label both allocate.
+- `--stats-only` runs the reference alone and checks the calibration gate. It is fast because nothing is compiled
+  through TSL. Use it when changing `synthetic/gains.ts`, then re-pin the stage hashes (`generate.test.ts`) and
+  rerun with `--golden`. The skip-scale ranges are per family (general, ViT, decoder window blocks): the residual
+  stream's gain per block is steep in the mean scale.
+- Results on the dev machine (RTX 3060 Ti, Chrome stable, D3D12 + DXC): at 64x64 and at 512x512, 83 of 83 tensors
+  are bit-exact (79 boundaries, `post merge`, `post merge raw`, `post block raw`, head), repeat runs are identical,
+  and 79 of 79 boundaries are in calibration range.
+- In Node, `network.synthetic.gpu.test.ts` runs 64x64 by default. 512x512 needs `NR_FULL=1`: its single
+  451-dispatch command buffer can trip the Windows driver timeout (TDR) on D3D12/FXC when the GPU is busy.
 - `network.real.gpu.test.ts` runs the reference's own `loadFixture` / `runParity` on `NRNetwork`. It needs
   `NR_WEIGHTS` (a model directory) and `NR_FIXTURES` (a fixture directory, or a directory of them).
 
