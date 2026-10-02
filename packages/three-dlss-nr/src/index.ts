@@ -98,3 +98,21 @@ export {
   type NRTimingMethod,
 } from './backend/NRBackend.js';
 export { NRFrameTimer, summarizeMilliseconds } from './backend/timing.js';
+
+// The integration pass: a three.js scene through the network onto the canvas (NR on / off / split), any backend.
+export {
+  backendBlendScale,
+  backendBuilder,
+  clampSize,
+  DLSS_NR_DEFAULT_SETTINGS,
+  DLSS_NR_MAX_PIXELS,
+  DlssNrPass,
+  type DlssNrExternalFrame,
+  type DlssNrFrameStats,
+  type DlssNrNetwork,
+  type DlssNrNetworkBuilder,
+  type DlssNrNetworkState,
+  type DlssNrPassOptions,
+  type DlssNrSettings,
+  type DlssNrView,
+} from './integration/DlssNrPass.js';

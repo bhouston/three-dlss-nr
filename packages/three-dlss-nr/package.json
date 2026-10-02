@@ -37,6 +37,10 @@
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
     },
+    "./synthetic": {
+      "types": "./dist/synthetic/index.d.ts",
+      "default": "./dist/synthetic/index.js"
+    },
     "./reference-backend": {
       "types": "./dist/reference-backend/index.d.ts",
       "default": "./dist/reference-backend/index.js"

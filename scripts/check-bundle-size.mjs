@@ -2,12 +2,20 @@ import { build } from 'esbuild';
 import { gzipSync } from 'node:zlib';
 import { appendFileSync } from 'node:fs';
 
-// Measure complete package exports with three.js supplied by the consumer.
-const limits = { 'three-dlss-nr': 4000 };
-const rows = ['| Package | Minified gzip | Limit |', '| --- | ---: | ---: |'];
-for (const [name, limit] of Object.entries(limits)) {
+// Measure complete package entry points with three.js supplied by the consumer.
+//
+// Budgets: the main entry is the whole network (451 dispatches from ~10 kernel factories written in TSL, the graph,
+// the model loader, the frame kernels and the CPU-built lookup tables); 27.5 kB gzip before the attention kernels,
+// which add roughly 6 kB. 40 kB leaves headroom for small fixes without hiding a regression such as a bundled copy of
+// three or of the synthetic generator. `three-dlss-nr/synthetic` (weight and feature generator) stays separate.
+const entries = [
+  { name: 'three-dlss-nr', file: 'packages/three-dlss-nr/dist/index.js', limit: 40000 },
+  { name: 'three-dlss-nr/synthetic', file: 'packages/three-dlss-nr/dist/synthetic/index.js', limit: 8000 },
+];
+const rows = ['| Entry | Minified gzip | Limit |', '| --- | ---: | ---: |'];
+for (const { name, file, limit } of entries) {
   const result = await build({
-    entryPoints: [`packages/${name}/dist/index.js`],
+    entryPoints: [file],
     bundle: true,
     minify: true,
     write: false,
