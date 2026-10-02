@@ -73,8 +73,11 @@ jobs:
       - name: Bundle size gate
         run: pnpm size
 
+      # GHSA-86w9-cpqp-85rv (node-forge, no patched release) is reached only through
+      # @tanstack/nitro-v2-vite-plugin > nitropack > listhen, which uses it to mint
+      # dev-server HTTPS certificates. It is not in the built server (.output).
       - name: Production dependency audit
-        run: pnpm audit --prod --audit-level high
+        run: pnpm audit --prod --audit-level high --ignore GHSA-86w9-cpqp-85rv
 
       # Keep all development advisories visible; production vulnerabilities block.
       - name: Audit dependencies (advisory)
