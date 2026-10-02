@@ -29,5 +29,8 @@ Upstream NOTICE (OpenDLSS-NR, commit 9d08f41), carried forward:
     file only.
 
 None of the upstream third-party build components listed above are used or redistributed by three-dlss-nr.
-The upstream repository is included only as a git submodule (reference/OpenDLSS-NR) for parity testing and is
-not part of the published three-dlss-nr package.
+The upstream repository is included as a git submodule (reference/OpenDLSS-NR) for parity testing; the repository
+itself is not part of the published three-dlss-nr package. One exception: the optional entry point
+`three-dlss-nr/reference-backend` redistributes the MIT-licensed JavaScript and WGSL of the upstream WebGPU port
+(ports/browser-webgpu, commit 9d08f4184bbcb9d858e2fb7a7834ec0837a9d2f1), copied unmodified at build time into
+vendor/opendlss-nr/ with upstream's LICENSE (Copyright (c) 2026 maan) and a per-file provenance list (SOURCE.json).
