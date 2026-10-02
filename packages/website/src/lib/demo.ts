@@ -89,9 +89,6 @@ const BACKEND_LABELS: Record<NRBackendId, string> = {
   'reference-wgsl': 'Reference WGSL (OpenDLSS-NR)',
 };
 
-/** The native TSL backend, once the package exports it (`tslBackend`). */
-const tslFactory = (): NRBackendFactory | undefined => (nr as unknown as { tslBackend?: NRBackendFactory }).tslBackend;
-
 const median = (values: number[]): number | null => nr.summarizeMilliseconds(values)?.median ?? null;
 
 interface Prepared {
@@ -276,7 +273,7 @@ export class DemoController {
       return { id, label: BACKEND_LABELS[id], reason, detail };
     };
     return [
-      option('tsl', tslFactory(), 'not in this build yet (the native network is still being ported)'),
+      option('tsl', nr.tslBackend, 'the TSL backend failed to load'),
       option('reference-wgsl', this.referenceModule?.referenceWgslBackend, 'reference backend failed to load'),
     ];
   }
@@ -486,7 +483,9 @@ export class DemoController {
         );
         this.prepared = { backendId, weights, model, dispose: () => model.dispose() };
       } else {
-        this.prepared = { backendId, weights, model: weights.model, dispose: () => undefined };
+        // Parsed once and borrowed by every network (resizes do not reload it).
+        const model = await nr.NRModel.load(weights.model);
+        this.prepared = { backendId, weights, model, dispose: () => model.dispose() };
       }
     }
     const model = this.prepared.model;
@@ -497,9 +496,7 @@ export class DemoController {
       }
       return nr.backendBuilder(reference.referenceWgslBackend, model as object);
     }
-    const factory = tslFactory();
-    if (!factory) throw new Error('the TSL backend is not in this build');
-    return nr.backendBuilder(factory, model as object);
+    return nr.backendBuilder(nr.tslBackend, model as object);
   }
 
   dispose(): void {
