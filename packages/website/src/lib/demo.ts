@@ -59,6 +59,8 @@ export const RESOLUTIONS: readonly Resolution[] = [
 
 export interface DemoState {
   phase: 'starting' | 'ready' | 'error';
+  /** Heading and message of a fatal error (no WebGPU, device lost). */
+  errorTitle: string | null;
   error: string | null;
   device: DeviceReport | null;
   backends: BackendOption[];
@@ -122,6 +124,7 @@ export class DemoController {
   constructor() {
     this.state = {
       phase: 'starting',
+      errorTitle: null,
       error: null,
       device: null,
       backends: (['tsl', 'reference-wgsl'] as const).map((id) => ({
@@ -188,6 +191,18 @@ export class DemoController {
         return;
       }
       this.renderer = renderer;
+      void (renderer.backend.device as GPUDevice).lost.then((info) => {
+        if (this.disposed || info.reason === 'destroyed') return;
+        renderer.setAnimationLoop(null);
+        this.set({
+          phase: 'error',
+          errorTitle: 'The GPU stopped responding',
+          error:
+            `The WebGPU device was lost (${info.message || info.reason}). This happens when the GPU is busy with ` +
+            'other work or one frame takes too long (Windows resets the GPU after about two seconds). Reload the ' +
+            'page and try a lower resolution.',
+        });
+      });
       renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
       renderer.domElement.style.display = 'block';
       renderer.domElement.style.width = '100%';
@@ -238,7 +253,11 @@ export class DemoController {
       this.set({ phase: 'ready' });
       await this.setModel(this.state.modelId);
     } catch (error) {
-      this.set({ phase: 'error', error: error instanceof Error ? error.message : String(error) });
+      this.set({
+        phase: 'error',
+        errorTitle: 'This demo needs WebGPU',
+        error: error instanceof Error ? error.message : String(error),
+      });
     }
   }
 

@@ -52,6 +52,7 @@ export function DemoApp() {
   );
 
   const error = loadError ?? (state?.phase === 'error' ? state.error : null);
+  const errorTitle = state?.errorTitle ?? 'This demo needs WebGPU';
 
   return (
     <div className="mx-auto grid w-full max-w-[1500px] gap-4 p-4 lg:grid-cols-[minmax(0,1fr)_340px]">
@@ -61,7 +62,7 @@ export function DemoApp() {
           className="relative aspect-video w-full overflow-hidden rounded-md border border-border bg-black"
         >
           {state && !error ? <ViewportOverlay state={state} controller={controller!} /> : null}
-          {error ? <WebGPUError message={error} /> : null}
+          {error ? <WebGPUError title={errorTitle} message={error} /> : null}
           {!state && !error ? (
             <p className="absolute inset-0 grid place-items-center text-sm text-white/70">Loading…</p>
           ) : null}
@@ -76,11 +77,11 @@ export function DemoApp() {
   );
 }
 
-function WebGPUError({ message }: { message: string }) {
+function WebGPUError({ title, message }: { title: string; message: string }) {
   return (
     <div className="absolute inset-0 grid place-items-center p-6 text-center text-white">
       <div className="max-w-lg space-y-2">
-        <p className="text-base font-semibold">This demo needs WebGPU</p>
+        <p className="text-base font-semibold">{title}</p>
         <p className="text-sm text-white/80">{message}</p>
         <p className="text-xs text-white/60">
           The neural network runs as WebGPU compute shaders in your browser; there is no server-side fallback.
@@ -229,7 +230,7 @@ function StatusBar({ state }: { state: DemoState }) {
       <span className={tone}>
         Network: {network.state === 'none' ? 'none' : network.state} {network.message ? `- ${network.message}` : ''}
       </span>
-      <span className="text-muted-foreground tabular-nums">{state.fps.toFixed(0)} fps</span>
+      <span className="text-muted-foreground tabular-nums">{state.fps.toFixed(state.fps < 10 ? 1 : 0)} fps</span>
       <span className="text-muted-foreground">
         internal {state.resolution.width}x{state.resolution.height}
       </span>
