@@ -22,6 +22,9 @@ function dawnOptions(): string[] {
 // tests import its modules explicitly.
 const exclude = ['**/node_modules/**', '**/dist/**', 'reference/**'];
 
+/** Whole-network GPU tests, run as their own project after the other GPU tests. */
+const networkTests = ['packages/**/network.*.gpu.test.ts'];
+
 export default defineConfig({
   resolve: {
     // Tests (both projects) run against package sources, not dist builds.
@@ -62,9 +65,26 @@ export default defineConfig({
           // fetch() for file: and synthetic: URLs, so the reference port loads its WGSL and weights in Node.
           setupFiles: [`${root}packages/three-dlss-nr/test/setup/fetchShim.ts`],
           include: ['packages/**/*.gpu.test.ts'],
-          exclude,
+          exclude: [...exclude, ...networkTests],
           testTimeout: 120_000,
           hookTimeout: 120_000,
+          sequence: { groupOrder: 0 },
+        },
+      },
+      {
+        extends: true,
+        test: {
+          // The whole network (network.*.gpu.test.ts): minutes of kernel compilation and full-GPU frames. Its own
+          // project with a later group order, so it runs after the other GPU files instead of starving them.
+          name: 'gpu-network',
+          environment: 'webgpu-node',
+          environmentOptions: { webgpuNode: { dawnOptions: dawnOptions() } },
+          setupFiles: [`${root}packages/three-dlss-nr/test/setup/fetchShim.ts`],
+          include: networkTests,
+          exclude,
+          testTimeout: 1_800_000,
+          hookTimeout: 600_000,
+          sequence: { groupOrder: 1 },
         },
       },
     ],

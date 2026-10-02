@@ -11,6 +11,7 @@ import {
   generateSyntheticModel,
   generateSyntheticRecord,
   irwinHallNormal,
+  skipScaleRange,
   SYNTHETIC_FORMAT,
   type SyntheticModel,
 } from './generate.js';
@@ -74,17 +75,17 @@ describe('synthetic model', () => {
     }
     expect(hashes).toMatchInlineSnapshot(`
       {
-        "s00": "ca033c6b50af10bb03716fec9d2c43b46109c190a8ea5f46ea998fc748af0acc",
-        "s01": "e1ac797d852b1a48932070285563973915c9a68c911e1a3706bf16b70a728175",
-        "s02": "4df77ba8c58c6cbc90c000ea4fa8313e6127c7aac2d001084239a1cfa35d0001",
-        "s03": "bf61eb8de9984bf68a2c4e6cd91ba17b09deab17a40648138f5e266fd0f49fd2",
-        "s04": "ce69b686c17a4daf8266f5ceb29cadcb807d408f240b875d526146d5ba9dab84",
-        "s05": "d4b328ab829639c22d159237872211adde13f96f53a2c3387ddbfd2f15b29bce",
-        "s06": "e1343d07dc16c53093d7e4b6e2fd55629d0a3fe19a707beabd22b69854a3d660",
-        "s07": "e6a98aa5a5931157ed6dd9c52a02ed1b50bf4de0b719ff60f957a4fd75757330",
-        "s08": "f2c9d923a33e2e7eafbd6d93f762b5433ac64b7393b4594743ee7bfac665a78f",
-        "s09": "1c957c611d9155dca15bf44400dc45947f2da16e6516e8082368d5f3b619506b",
-        "s10": "b8a294b563831db2d3b362f68060eaf77736d04cf70c45312e9b38aa059313a0",
+        "s00": "0dda0101a0eb47b05bd43419a351a887e4436a6322a8b6d048d091f4b8a9ee84",
+        "s01": "abb2c1f2e1f29d1816e3af7f9a163d7801731d2f6016efd1205c76647d113029",
+        "s02": "07f5b6a55339b0ba03b4ff27be6dbd203378a99ddd9d9646d8ea08f2e269ebb5",
+        "s03": "3cffeaa7d6d8671c873daf7b753a17d4fa8e3795a83b064f291bd6bec6106887",
+        "s04": "fdb975d9306defe141ee63c491a564b3455c20aa16b509c68251a64a99d38c25",
+        "s05": "0027d19262d7c424f42e9efa60dff74371a7a7bb9e4b96e82f5e242302ba71fd",
+        "s06": "27c84395c41f24af54bb58b189d679a62af63c851f1b1d13f318971cb9025022",
+        "s07": "3647ea2b3dd8bbc2fc447fce6874548dd1400af6adc7eba78204693568a45607",
+        "s08": "1ed53aa0f3f83cf806864c7f9fde767d8799bb13d0d6b8dc8969b8bbdc9504de",
+        "s09": "cc9cbb0596eb6449b17f93708ac05af0d919f037f22c2b3be15bf36fe1c8a5ff",
+        "s10": "3f57fb34c0ea5f7911553935999a8450fd7651b0a05c4c0a51782c2ddaf1acea",
       }
     `);
   });
@@ -132,7 +133,7 @@ describe('synthetic model', () => {
         const half = (i: number) => f16ToNumber(view.getUint16(region.offset + i * 2, true));
         switch (region.kind) {
           case 'skip-scale':
-            for (let i = 0; i < region.count; ++i) expect(inRange(half(i), SYNTHETIC_RANGES.skipScale)).toBe(true);
+            for (let i = 0; i < region.count; ++i) expect(inRange(half(i), skipScaleRange(record.block))).toBe(true);
             break;
           case 'prior':
             for (let i = 0; i < region.heads * 4096; ++i) expect(inRange(half(i), SYNTHETIC_RANGES.prior)).toBe(true);
