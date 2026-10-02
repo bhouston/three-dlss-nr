@@ -108,6 +108,24 @@ and match the oracles. `refKernels.gpu.test.ts` prints a device report of what i
 
 Our TSL must compile under FXC too (the default local backend): test every kernel on D3D12.
 
+**lavapipe (CI) has `shader-f16` but is not a trustworthy f16 reference.** Mesa llvmpipe (25.2, LLVM 20) folds the
+round trip `f32(f16(x))` into `x`. The reference spells every half rounding that way: `round_accumulator`, the end
+of each FP8 GEMM FDPA group (`vec4<f32>(vec4<f16>(sums * scale))`), and the SiLU table builder. On llvmpipe the half
+accumulator therefore stays an unrounded f32 between groups, and a real f16 rounding happens only where a value is
+stored as f16 or bitcast. In CI run 37030840217, 24% of the reference FP8 GEMM's raw half outputs were one half ulp
+off. A CPU model of that folding reproduces every listed CI difference. The same inputs in Chrome on an RTX 3060 Ti
+(D3D12 + DXC, real f16) equal `oracleGemmFp8` bit for bit on all seven cases (`test/browser/run-fp8-gemm-chrome.mjs`,
+one-off and not part of any test run). So `RefKernels` reports `gemm_fp8` and `window_attend` unavailable on
+llvmpipe (`SOFTWARE_F16_REASON`; override it with `DLSS_NR_TRUST_SOFTWARE_F16=1`). The local gate for reference
+parity of the f16 kernels is real hardware in a browser:
+
+```sh
+node packages/three-dlss-nr/test/browser/run-fp8-gemm-chrome.mjs            # Chrome stable; --chrome <path>, --headed
+```
+
+Our TSL never relies on f16 hardware. It rounds with `nrRoundF16` on bit patterns, so it gives the same bytes on
+lavapipe and on hardware.
+
 ## TSL pitfalls and the helper that avoids each
 
 | #         | pitfall (three 0.186)                                                                                                                                                                                                                                                                | avoid it with                                                                                                                                              |

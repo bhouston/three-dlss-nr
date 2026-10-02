@@ -113,6 +113,27 @@ export class RefSelftest {
 export interface RefKernelsOptions {
   /** The ViT's `PADDED_TOKENS` override (vit.wgsl is compiled once per RefKernels). Default 64. */
   paddedVitTokens?: number;
+  /** The adapter's info (defaults to `device.adapterInfo`); used to recognize software rasterizers. */
+  adapterInfo?: GPUAdapterInfo;
+}
+
+/**
+ * Mesa llvmpipe (lavapipe, the CI device) exposes `shader-f16` but folds the f32 -> f16 -> f32 round trip
+ * `f32(f16(x))` into `x`, so the reference's half roundings (`round_accumulator`, the end of every FDPA group, the
+ * SiLU table builder) never happen; a real f16 rounding is left only where a value is stored as f16 or bitcast. The
+ * reference FP8 GEMM then differs from real f16 hardware by one half ulp in ~24% of raw half outputs (CI run
+ * 37030840217; on an RTX 3060 Ti in Chrome it equals oracleGemmFp8 exactly, test/browser/run-fp8-gemm-chrome.mjs).
+ * The reference's f16 kernels are therefore not a trustworthy oracle there. Set DLSS_NR_TRUST_SOFTWARE_F16=1 to run
+ * them anyway.
+ */
+export const SOFTWARE_F16_REASON =
+  'llvmpipe folds f32(f16(x)) round trips, so the reference f16 kernels do not round like f16 hardware ' +
+  '(set DLSS_NR_TRUST_SOFTWARE_F16=1 to run anyway)';
+
+/** True for adapters whose f16 arithmetic does not round like hardware (Mesa llvmpipe / lavapipe). */
+export function isUntrustedSoftwareF16(info: GPUAdapterInfo | undefined): boolean {
+  if (!info || process.env.DLSS_NR_TRUST_SOFTWARE_F16 === '1') return false;
+  return /llvmpipe|lavapipe/i.test(`${info.vendor} ${info.architecture} ${info.device} ${info.description}`);
 }
 
 /**
@@ -177,6 +198,9 @@ export class RefKernels {
       const reason = 'needs shader-f16, which this device lacks';
       unavailable.set('gemm_fp8', reason);
       unavailable.set('window_attend', reason);
+    } else if (isUntrustedSoftwareF16(options.adapterInfo ?? (device as any).adapterInfo)) {
+      unavailable.set('gemm_fp8', SOFTWARE_F16_REASON);
+      unavailable.set('window_attend', SOFTWARE_F16_REASON);
     }
     const matmul = f16 ? await Matmul.create(device) : null;
     const window = f16 ? WindowAttention.create(device, numerics) : null;
