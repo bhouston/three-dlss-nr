@@ -247,3 +247,26 @@ Dawn in Node has no `shader-f16` on the Windows dev machine, so the shim runs in
   - The shim needs `shader-f16`. In Node it only runs where Dawn exposes that feature, and lavapipe's f16 results are
     untrusted ("[B: lavapipe]" in the design). Render the committed results in Chrome on the dev GPU with the harness
     above.
+
+## The integration pass (`integration/DlssNrPass.ts`, design chunk G)
+
+- One frame: the scene into an RGBA16F MRT target (`textures[0]` colour named `output`, `textures[1]` named
+  `velocity`, velocity cleared to 0), then `inputFeatures[p]` (`renderer.compute`), `backend.run()` (its own submit,
+  awaited), then `compose[p]` plus a small unpack of the reference's bgra8 `image` into an rgba8unorm
+  `StorageTexture`, then the present quad. `p = frameIndex & 1` selects the `NRHistory` ping-pong.
+- Both backends use the same frame kernels: the features and head are three storage attributes bound to the
+  backend's own buffers (`sharedTensorBuffer` for the shim), so nothing is copied. Compose writes the reference's
+  `image` (display transform applied on the GPU, exactly as `frame.wgsl`), so the presented bytes are the
+  reference's whenever D's kernels are byte-identical to `frame.wgsl` (D3D12: yes; NVIDIA Vulkan: rare one-step
+  differences in the reprojected history). The quad samples that texture with bilinear filtering to the canvas size.
+- NR off is drawn by the quad as `nrDisplayTransform(scene)` in a fragment shader: the same operator, but not
+  bit-identical to the compute version (fma contraction), which is irrelevant for viewing.
+- `DlssNrExternalFrame` is the escape hatch for a backend that records its own frame (`ReferenceFrame`); its
+  `output` must be display-ready rgba8 bytes.
+- The blend scale comes from `backend.blendScale` (shim) or `backend.model.blendScale()` (TSL port), else the
+  `blendScale` option.
+- `render()` waits for the network on the GPU (as the reference demo does), so the loop runs at the network's
+  frame rate; a call while one is in flight returns null.
+- Fidelity suite: `DlssNrPass` exposes `renderTarget` (the rendered colour / velocity) and `outputTexture` (the
+  presented NR image); render into an RGBA8 target with `renderer.setRenderTarget(target)` before `render()` to read
+  the presented frame back (the GPU test does this).
