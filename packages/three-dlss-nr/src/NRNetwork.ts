@@ -217,7 +217,12 @@ export class NRNetwork implements NRBackend {
       const field = `${this.geometry.fullWidth}x${this.geometry.fullHeight}`;
       throw new RangeError(`features hold ${data.length} values; the ${field} field needs ${expected}`);
     }
-    writeBuffer(this.graph.features, data);
+    // Once three has created the GPU buffer, write it directly: a frame kernel may have written the features on the
+    // GPU since, and `needsUpdate` would re-upload the whole CPU copy at an unrelated later point. Before that, the CPU
+    // copy is what three uploads when it creates the buffer.
+    const gpuBuffer: GPUBuffer | undefined = this.renderer.backend.get(this.graph.features.attribute)?.buffer;
+    if (gpuBuffer) this.renderer.backend.device.queue.writeBuffer(gpuBuffer, 0, data);
+    else writeBuffer(this.graph.features, data);
   }
 
   /**

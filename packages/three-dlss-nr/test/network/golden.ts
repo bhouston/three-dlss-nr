@@ -51,5 +51,5 @@ export async function digestTensors(tensors: Map<string, Uint8Array>): Promise<N
 export const networkDigest = async (network: ParityReader): Promise<NetworkDigest> =>
   digestTensors(await readParityTensors(network));
 
-/** Golden digests by valid size (`WxH`). Regenerate with the Chrome parity gate (`--golden`). */
-export const NETWORK_GOLDEN: Record<string, NetworkDigest> = {};
+/** Golden digests by valid size (`WxH`); regenerate with the Chrome parity gate (`--golden`). */
+export { GOLDEN_DIGESTS as NETWORK_GOLDEN } from './goldenDigests.js';
