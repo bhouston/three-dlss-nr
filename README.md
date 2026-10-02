@@ -87,7 +87,7 @@ import { backendBuilder, createNRRenderer, DlssNrPass, NRModel, tslBackend } fro
 const { renderer } = await createNRRenderer(); // a WebGPURenderer on a device with the limits the network needs
 document.body.appendChild(renderer.domElement);
 
-// Your model directory: manifest.json + model/stages/* (see Weights below).
+// Your model directory: manifest.json + model/stages/* (see the weights section below).
 const model = await NRModel.load('https://example.com/my-model');
 
 const pass = new DlssNrPass({ renderer, scene, camera, width: 960, height: 540, view: 'split' });
@@ -133,17 +133,33 @@ SHA-256 provenance list. It is a separate entry point, so the main bundle does n
 A third entry point, `three-dlss-nr/synthetic`, generates deterministic synthetic weights in the model directory
 layout (`generateSyntheticModel`) and synthetic input features (`syntheticFeatures`), for tests and demos.
 
-## Weights
+## Why there are no real weights (and what the synthetic ones are for)
 
-**You supply the weights. None are included, downloaded or hosted.** The network's trained weights are NVIDIA's
-proprietary property and are not part of this repository, its npm package, its demo or OpenDLSS-NR. To run the
-network on real weights, point it at a model directory you are entitled to use: `manifest.json` plus
+**You supply the weights. None are included, downloaded, hosted or extracted.** The trained weights are NVIDIA's
+proprietary DLSS-NR 310.8.0 model. OpenDLSS-NR deliberately ships neither the weights nor instructions for obtaining
+them, and grants no rights under NVIDIA's intellectual property. This project cannot redistribute, host or extract
+them either: pulling them out of NVIDIA's binaries would likely breach NVIDIA's license terms. So neither this
+repository, the npm package nor the demo contains them.
+
+**Synthetic weights** (`three-dlss-nr/synthetic`) are generated deterministically, in the same model directory layout,
+and calibrated so that every block boundary stays in a realistic, non-saturating range. They serve two purposes:
+
+- **They prove the port computes the same function as the reference.** The port is bit-exact against the reference
+  on arbitrary weights, through every kernel and every block, so it will match on any weights, including the real
+  ones.
+- **They let the whole pipeline run end to end** in the tests and in the demo.
+
+Their output image is meaningless (the red field in the screenshot above).
+
+**If you are entitled to real weights,** point the network at the model directory: `manifest.json` plus
 `model/stages/*`, in the layout described in upstream's
-[`docs/weights.md`](https://github.com/maanHimself/OpenDLSS-NR/blob/9d08f41/docs/weights.md).
+[`docs/weights.md`](https://github.com/maanHimself/OpenDLSS-NR/blob/9d08f41/docs/weights.md). In the demo, use
+**Load model directory...**; the browser reads it locally and never uploads it. In code, pass its URL or files to
+`NRModel.load`. The real-capture parity test (`network.real.gpu.test.ts`) runs upstream's own fixture comparison when
+`NR_WEIGHTS` (a model directory) and `NR_FIXTURES` (a fixture directory) point at local files.
 
-Tests and the demo's "Synthetic weights" option use generated weights in the same layout. They exercise every kernel
-with realistic value ranges, but the image they produce means nothing. Real-weight parity tests run only when
-`NR_WEIGHTS` and `NR_FIXTURES` point at local files.
+There are two paths to meaningful public output: a license from NVIDIA, or open weights trained for the same
+architecture. See [docs/training-weights.md](docs/training-weights.md).
 
 ## Demo
 
