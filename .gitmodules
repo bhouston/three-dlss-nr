@@ -1,0 +1,3 @@
+[submodule "reference/OpenDLSS-NR"]
+	path = reference/OpenDLSS-NR
+	url = https://github.com/maanHimself/OpenDLSS-NR.git

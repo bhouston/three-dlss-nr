@@ -1,0 +1,54 @@
+{
+  "name": "three-dlss-nr",
+  "version": "0.1.0",
+  "description": "A port to three.js (TSL / WebGPU) of OpenDLSS-NR by maan, an open reimplementation of a DLSS-style neural rendering network.",
+  "keywords": [
+    "dlss",
+    "neural rendering",
+    "three.js",
+    "threejs",
+    "tsl",
+    "webgpu"
+  ],
+  "homepage": "https://github.com/bhouston/three-dlss-nr/tree/main/packages/three-dlss-nr",
+  "bugs": {
+    "url": "https://github.com/bhouston/three-dlss-nr/issues"
+  },
+  "license": "MIT",
+  "author": "Ben Houston (https://ben3d.ca)",
+  "contributors": [
+    "maan (https://github.com/maanHimself) - author of OpenDLSS-NR, the implementation this package ports"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/bhouston/three-dlss-nr.git",
+    "directory": "packages/three-dlss-nr"
+  },
+  "files": [
+    "dist",
+    "NOTICE"
+  ],
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc -w --preserveWatchOutput --noEmitOnError",
+    "test": "vitest run --root ../.. --project unit packages/three-dlss-nr"
+  },
+  "devDependencies": {
+    "three": "^0.186.0"
+  },
+  "peerDependencies": {
+    "three": ">=0.180.0"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}

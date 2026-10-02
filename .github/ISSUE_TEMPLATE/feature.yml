@@ -1,0 +1,23 @@
+name: Feature request
+description: Propose a change with verifiable acceptance criteria.
+title: 'feat: '
+body:
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: What should change, and why?
+    validations:
+      required: true
+  - type: textarea
+    id: constraints
+    attributes:
+      label: Constraints
+      description: Compatibility, performance, scope, and other requirements.
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: List the observable outcomes that make this complete.
+    validations:
+      required: true

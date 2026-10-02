@@ -1,0 +1,31 @@
+{
+  "name": "website",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "vite build",
+    "tsc": "tsc --noEmit",
+    "dev": "vite dev --port 3300 --strictPort",
+    "start": "node .output/server/index.mjs",
+    "preview": "vite preview",
+    "test": "vitest run --root ../.. --project unit packages/website"
+  },
+  "dependencies": {
+    "@tanstack/nitro-v2-vite-plugin": "1.155.0",
+    "@tanstack/react-router": "1.170.17",
+    "@tanstack/react-start": "1.168.27",
+    "@tanstack/router-plugin": "1.168.19",
+    "react": "^19.2.3",
+    "react-dom": "^19.2.3",
+    "three": "^0.186.0",
+    "three-dlss-nr": "workspace:*"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.1.18",
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "@vitejs/plugin-react": "^5.1.2",
+    "tailwindcss": "^4.1.18",
+    "vite": "^8.1.3"
+  }
+}

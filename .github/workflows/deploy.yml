@@ -1,0 +1,17 @@
+name: Deploy demo to Cloud Run
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    name: Deploy demo to Cloud Run
+    uses: ./.github/workflows/deploy-service.yml
+    with:
+      service_name: three-dlss-nr
+      dockerfile: packages/website/Dockerfile
+      context: .
+    secrets:
+      GCP_SA_KEY: ${{ secrets.GCP_SA_KEY }}

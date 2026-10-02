@@ -1,0 +1,17 @@
+packages:
+  - packages/*
+
+allowBuilds:
+  esbuild: true
+  webgpu: true
+
+linkWorkspacePackages: true
+
+minimumReleaseAgeExclude:
+  - three
+  - '@vitest/coverage-v8'
+  - '@vitest/mocker'
+  - '@vitest/pretty-format'
+  - '@vitest/spy'
+  - '@vitest/utils'
+  - vitest
