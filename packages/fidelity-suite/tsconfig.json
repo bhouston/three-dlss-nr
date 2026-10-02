@@ -1,0 +1,16 @@
+{
+  "extends": "../../tsconfig.node.json",
+  "compilerOptions": {
+    "composite": true,
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    "rootDir": "${configDir}",
+    "outDir": "${configDir}/node_modules/.cache/tsc",
+    "tsBuildInfoFile": "${configDir}/node_modules/.cache/tsc/.tsbuildinfo",
+    "emitDeclarationOnly": true,
+    "declarationMap": false,
+    "sourceMap": false
+  },
+  "include": ["${configDir}/src/**/*.ts"],
+  "exclude": ["${configDir}/node_modules"],
+  "references": [{ "path": "../three-dlss-nr" }]
+}

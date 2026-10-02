@@ -1,0 +1,19 @@
+{
+  "name": "fidelity-suite",
+  "private": true,
+  "description": "Side-by-side parity suite (fidelity-kit) of the OpenDLSS-NR reference WebGPU port, three-dlss-nr's TSL port and its reference shim.",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "generate": "node scripts/generate.mjs",
+    "check": "node scripts/check.mjs",
+    "dev": "fidelity-kit dev results",
+    "build": "node scripts/build.mjs",
+    "readmes": "node scripts/readmes.mjs"
+  },
+  "dependencies": {
+    "fidelity-kit": "^2.3.0",
+    "three": "^0.186.0",
+    "three-dlss-nr": "workspace:*"
+  }
+}

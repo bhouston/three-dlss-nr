@@ -29,6 +29,11 @@ export default defineConfig({
   resolve: {
     // Tests (both projects) run against package sources, not dist builds.
     alias: [
+      { find: /^three-dlss-nr\/synthetic$/, replacement: `${root}packages/three-dlss-nr/src/synthetic/index.ts` },
+      {
+        find: /^three-dlss-nr\/reference-backend$/,
+        replacement: `${root}packages/three-dlss-nr/src/reference-backend/index.ts`,
+      },
       { find: 'three-dlss-nr', replacement: `${root}packages/three-dlss-nr/src/index.ts` },
       { find: /^@ref\//, replacement: referenceSource },
     ],

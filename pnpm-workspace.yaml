@@ -5,6 +5,10 @@ allowBuilds:
   esbuild: true
   webgpu: true
 
+auditConfig:
+  ignoreGhsas:
+    - GHSA-86w9-cpqp-85rv
+
 linkWorkspacePackages: true
 
 minimumReleaseAgeExclude:
@@ -15,3 +19,4 @@ minimumReleaseAgeExclude:
   - '@vitest/spy'
   - '@vitest/utils'
   - vitest
+  - fidelity-kit
