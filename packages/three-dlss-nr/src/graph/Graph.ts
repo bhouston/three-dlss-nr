@@ -30,7 +30,12 @@ import {
 import type { NRModel, NRModelTensor } from '../model/Model.js';
 import { NRTensors } from '../tensors.js';
 import type { FP8Matrix, HalfVector, NRKernel, NRTensor, StorageBufferAttribute } from '../types.js';
-import { createVitAttendKernel, createVitNormalizeKernel, createWindowAttentionKernel } from './attention.js';
+import {
+  createVitAttendKernel,
+  createVitNormalizeKernel,
+  createWindowAttentionKernel,
+  type WindowQueries,
+} from './attention.js';
 
 /** One entry of the graph's ordered kernel list. */
 export interface NRGraphPass {
@@ -45,8 +50,13 @@ export interface NRGraphPass {
 }
 
 export interface NRGraphOptions {
-  /** Keep a copy of every block boundary (75 of them), as the reference's parity harness does. */
+  /** Keep a copy of every block boundary (79 of them), as the reference's parity harness does. */
   captureBoundaries?: boolean;
+  /**
+   * Queries per window-attention workgroup: 32 (default, the reference's dispatch) or 16 for devices without 512
+   * invocations per workgroup (`windowQueriesFor(device)`); identical bytes either way.
+   */
+  windowQueries?: WindowQueries;
 }
 
 /** The two activation tensors of a stage that the blocks ping-pong between, and the per-stage temporaries. */
@@ -108,6 +118,7 @@ export class NRGraph {
   readonly weightAttributes = new Set<StorageBufferAttribute>();
 
   private readonly captureBoundaries: boolean;
+  private readonly windowQueries: WindowQueries;
   private readonly phases = new WindowPhases();
 
   constructor(model: NRModel, geometry: NRGeometry, options: NRGraphOptions = {}) {
@@ -117,6 +128,7 @@ export class NRGraph {
     this.model = model;
     this.geometry = geometry;
     this.captureBoundaries = options.captureBoundaries ?? false;
+    this.windowQueries = options.windowQueries ?? 32;
     this.features = this.tensors.allocate('input features', geometry.fullRows, 16, 'f32');
     this.record();
   }
@@ -207,7 +219,11 @@ export class NRGraph {
     const prior = this.weights(this.model.relativeBias(tensor, relative, heads));
     const scales = this.weights(this.model.headScales(tensor, scale, heads));
     this.add(
-      createWindowAttentionKernel({ width, height, heads, phase: phase & 3, label }, { qkv, prior, scales, attended }),
+      createWindowAttentionKernel(
+        { width, height, heads, phase: phase & 3, label },
+        { qkv, prior, scales, attended },
+        this.windowQueries,
+      ),
     );
   }
 

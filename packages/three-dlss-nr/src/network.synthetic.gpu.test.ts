@@ -7,10 +7,11 @@
 
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
+import { backendProblems, factoryProblems } from '../test/backendConformance.js';
 import { createGpuTestContext, type GpuTestContext } from '../test/gpu.js';
 import { NETWORK_GOLDEN, networkDigest } from '../test/network/golden.js';
 import { NRModel } from './model/Model.js';
-import { NRNetwork } from './NRNetwork.js';
+import { NRNetwork, tslBackend } from './NRNetwork.js';
 import { syntheticFeatures } from './synthetic/features.js';
 import { generateSyntheticModel } from './synthetic/generate.js';
 
@@ -50,7 +51,11 @@ describe('NRNetwork on synthetic weights', () => {
       });
       try {
         const compiled = performance.now();
-        expect(network.dispatchCount).toBe(451);
+        expect(backendProblems(network)).toEqual([]);
+        expect(factoryProblems(tslBackend)).toEqual([]);
+        expect(tslBackend.unavailableReason(gpu.renderer)).toBeNull();
+        expect(network.dispatchLabels).toHaveLength(451);
+        expect(network.dispatchCount).toBe(451 + 79);
         network.writeFeatures(syntheticFeatures(network.geometry));
         await network.run();
         const first = await networkDigest(network);

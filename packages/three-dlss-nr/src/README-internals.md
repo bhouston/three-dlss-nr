@@ -146,3 +146,104 @@ lavapipe and on hardware.
 | R16 (new) | FXC (D3D12 without DXC) fails with `E_FAIL` on `bitcast<u32>(abs(x))` (and on very large functions)                                                                                                                                                                                  | read exponent fields straight off the bits (`nrNormalExponent`); keep kernels small with layout `Fn`s and `pick`                                           |
 
 Binding names: `kernel()` names each binding `nr_<declared name>` instead of three's `NodeBuffer_<id>`.
+
+## Backends: the native TSL port and the reference shim
+
+`src/backend/NRBackend.ts` defines `NRBackend` / `NRBackendFactory`. That is the network API of design chunk E, plus
+`id`, `requirements`, GPU-resident `features` / `head` tensors, `memory`, and a timing result from `run`. The native
+`NRNetwork` implements it unchanged (`class NRNetwork implements NRBackend`). Export a factory named `tslBackend` from
+the index and the benchmark and parity page pick it up. `test/backendConformance.ts` (`backendProblems`,
+`factoryProblems`) is the shared conformance check.
+
+`src/reference-backend/` (entry point `three-dlss-nr/reference-backend`) is the **shim**: OpenDLSS-NR's reference
+WebGPU port, its JS and WGSL byte for byte, driven on `renderer.backend.device`.
+
+- **Bundling.** `scripts/bundle-reference.mjs` copies into `vendor/opendlss-nr/` (git-ignored, published via
+  `files`) every module reachable from `src/network.js`, plus the WGSL as string constants in `shaders.js`. Each file
+  gets a header naming the upstream file, the commit and the MIT license, and `LICENSE` and `SOURCE.json` (SHA-256 per
+  file) go beside them. The script runs in `build`, `pnpm tsc` and `pnpm test:gpu`, and `--check` reports drift. It
+  refuses a submodule that is not at the pinned commit. `bundle.test.ts` checks the vendored files against
+  `git show <commit>:...`.
+- **Orchestration.** `ReferenceWgslBackend.create` is the upstream `Network.create` without its `fetch` of the WGSL.
+  The object it builds is an upstream `Network` instance, so `run`, `readHead` and `readBoundary` are the upstream
+  methods. A model given as a URL loads through the upstream `Model.load`. An in-memory model (manifest plus stage
+  bytes) is uploaded with the same steps.
+- **Shared buffers.** `features` and `head` are `createTensor` storage attributes. `sharedTensorBuffer` has three
+  create their GPU buffers up front (`renderer.backend.createStorageAttribute`) and hands them to the upstream graph
+  under the keys the graph allocates them with. three's attribute code never creates a second buffer for an attribute
+  that already has one. So a TSL frame node that binds `backend.features` or `backend.head` writes or reads the same
+  buffer the WGSL graph uses. Writing `features` from the CPU goes through `queue.writeBuffer`, not `needsUpdate`. Do
+  not set `needsUpdate` on these attributes: three would upload their stale CPU copy over the GPU data.
+- **Frame adapter.** `ReferenceFrame` records the upstream demo's `input_features` / `compose` / history swap exactly
+  as `production-pipeline.js` does, but takes each frame from three textures on the GPU:
+  - A small pack pass writes the upstream `scene` buffer (RGBA16F halves) and `motion` buffer with `flip_y = 0`.
+    `motion` is the uv offset to the previous position, y down, which is `(-v.x/2, v.y/2)` of three's NDC `velocity`.
+  - A present pass unpacks the upstream's bgra8 canvas image into a three `StorageTexture` (`output`, rgba8unorm,
+    display-ready sRGB bytes).
+  - History works as upstream: it is invalid on the first frame, after `resetHistory()` or `reset: true`, and after a
+    rebuild. The noise seed is the frame count.
+  - Render targets: `RenderTarget(w, h, { count: 2, type: HalfFloatType, samples: 0 })`. Name the textures `output`
+    and `velocity` for `mrt({ output, velocity })`, and call `setClearColor('velocity', black, 0)` so the background
+    has no motion.
+- **Timing** (`NRFrameTimer` in `src/backend/timing.ts`). Both backends bracket the frame on the queue with two empty
+  compute passes that carry timestamp writes (`timestamp-query`). Both also take wall time from the first submit to
+  `onSubmittedWorkDone`. The brackets do not depend on how a backend encodes its frame, so TSL and WGSL are measured
+  the same way. The first `run` of a backend validates its frame inside an error scope and reports wall time only.
+
+### Real-browser checks (not part of `pnpm test`)
+
+Dawn in Node has no `shader-f16` on the Windows dev machine, so the shim runs in Chrome (D3D12 + DXC).
+`test/browser/chrome.mjs` is a DevTools harness with no dependencies. It uses Chrome stable, else Playwright's
+`%LOCALAPPDATA%\ms-playwright\chromium-*`. `test/browser/shimPage.ts` is the page.
+
+- `node packages/three-dlss-nr/test/browser/run-shim-parity-chrome.mjs [--model <dir>] [--size 128x128]` compares the
+  shim against the upstream port running standalone, with its own device, WGSL fetched from the submodule and the
+  upstream `Network.create`.
+  - Network: the same features in, then the head compared bitwise and every boundary compared.
+  - Frames: three rendered frames with a moving camera. It compares the packed inputs, the features (noise lanes
+    included), the head, the history and the presented image. The standalone side receives each frame through a CPU
+    readback, as the upstream demo does.
+- `node scripts/bench-backends.mjs [--model <dir>] [--sizes 512x512,1280x720]` reports, per backend and size, GPU and
+  wall ms (min / median), create time, first-frame time and memory. Run it on an idle GPU.
+
+`--model` defaults to `$NR_MODEL_DIR`. Without it, chunk A's generator writes a synthetic model once to
+`node_modules/.cache/three-dlss-nr/synthetic-model`.
+
+### Notes for the website (chunk G) and the fidelity suite (chunk H)
+
+- **Switching at runtime.**
+  - Keep one renderer, created on `createNRDevice()` so that `shader-f16` is enabled when the adapter has it.
+  - List `[tslBackend, referenceWgslBackend]`. Disable a backend whose `unavailableReason(renderer)` is non-null and
+    show that reason, which names the fix.
+  - To switch, `dispose()` the current backend and `create` the other one at the same size.
+  - Both backends read the same `features` layout and write the same `head`, so the frame code is shared. Your TSL
+    input-features pass writes `backend.features` and your compose pass reads `backend.head`, with no copies.
+  - To show the reference's own frame instead (its compose, display transform and history), use `ReferenceFrame` and
+    draw `frame.output` with no tone mapping.
+  - Reset history on every switch: the history buffers differ between the two paths.
+- **Compile and warm-up.**
+  - Creating the reference backend compiles about 200 specialised GEMM pipelines and about a dozen window-attention
+    pipelines (`createComputePipelineAsync`, bounded concurrency), and records 451 dispatches.
+  - Pipelines are cached per device and per override set, so a second `create` at the same size costs much less.
+    Show the `onProgress` messages while it runs.
+  - The first `run` validates the frame.
+  - Load the weights once with `loadReferenceModel` and pass the result to every `create`. Otherwise each resize
+    re-uploads about 141 MiB. Dispose the model separately.
+  - The TSL backend loads its own weights, so switching keeps two copies on the GPU unless you dispose the one you
+    are not using.
+- **Memory** (reported by `backend.memory`). The reference holds:
+  - the stage buffers (the whole model, about 141 MiB) plus its re-laid-out f16 matrices, priors and scales;
+  - its activation tensors: many hundreds of MiB at 1280x720, more with `captureBoundaries`;
+  - the SiLU and weight tables, kept per device;
+  - with `ReferenceFrame`, about 20 bytes per pixel of frame buffers.
+
+  Cap the demo's internal resolution as the design says: at most 1280x720 valid.
+
+- **Fidelity suite.**
+  - A renderer for the shim beside `opendlss-nr-webgpu` (standalone) and `three-dlss-nr` (TSL) is optional: the
+    parity check above already shows the shim is byte-identical to the standalone reference.
+  - To compare quality, run `tsl` and `reference-wgsl` through `NRBackend` on the same `writeFeatures` input, then
+    compare `readHead` and `readBoundary(name)`. Boundary names are the reference's.
+  - The shim needs `shader-f16`. In Node it only runs where Dawn exposes that feature, and lavapipe's f16 results are
+    untrusted ("[B: lavapipe]" in the design). Render the committed results in Chrome on the dev GPU with the harness
+    above.

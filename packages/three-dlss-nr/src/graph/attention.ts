@@ -3,15 +3,11 @@
 // Part of three-dlss-nr, a port to three.js (TSL / WebGPU) of OpenDLSS-NR by maan (MIT,
 // https://github.com/maanHimself/OpenDLSS-NR, pinned at 9d08f41). The graph (`Graph.ts`, a port of the reference's
 // ports/browser-webgpu/src/graph.js) calls the attention kernels only through this module, against the spec and buffer
-// types of `types.ts`, so the kernels' own modules can change without touching the graph.
-//
-// STUB: the attention kernels (`kernels/windowAttention.ts`, `kernels/vit.ts`) are not merged yet. Until they are,
-// these factories return kernels with the reference's label, kind and dispatch size (so the graph's pass list can be
-// checked against the reference), whose compute body throws when three builds it: a network that contains one cannot
-// be compiled or run. Replace each body with the real factory call when the kernels land.
+// types of `types.ts`. The kernels themselves are `kernels/windowAttention.ts` and `kernels/vit.ts`; their factories
+// take the block label and append ` attend` / ` normalize`, as the reference's graph does.
 
-import { grid1d, windowPhase } from '../geometry.js';
-import { kernel } from '../tsl/KernelBuilder.js';
+import { createVitAttend, createVitNormalize } from '../kernels/vit.js';
+import { createWindowAttention, type WindowQueries } from '../kernels/windowAttention.js';
 import type {
   NRKernel,
   VitAttendBuffers,
@@ -21,58 +17,29 @@ import type {
   WindowAttentionSpec,
 } from '../types.js';
 
-/** False while the attention kernels are stubs (networks then build, but cannot compile or run). */
-export const ATTENTION_KERNELS_AVAILABLE = false;
+export type { WindowQueries };
 
-const unavailable = (label: string) => () => {
-  throw new Error(`${label}: the attention kernels are not merged yet (src/graph/attention.ts is a stub)`);
-};
-
-/** Workgroup counts of one window attention, as `graph.js` `windowAttention` dispatches them (32 queries a group). */
-function windowDispatch({ width, height, heads, phase }: WindowAttentionSpec): [number, number, number] {
-  const [shiftX, shiftY] = windowPhase(phase);
-  const tasks = Math.ceil((width + shiftX) / 8) * Math.ceil((height + shiftY) / 8) * 2;
-  return [heads, Math.min(tasks, 65535), Math.ceil(tasks / 65535)];
+/**
+ * Queries per window-attention workgroup a device can run: 32 (the reference's tile, 512 invocations) when its limits
+ * allow, else 16 (256 invocations). Both publish identical bytes; only the dispatch size differs.
+ */
+export function windowQueriesFor(device: Pick<GPUDevice, 'limits'> | undefined): WindowQueries {
+  if (!device) return 32;
+  const { maxComputeInvocationsPerWorkgroup, maxComputeWorkgroupSizeX } = device.limits;
+  return maxComputeInvocationsPerWorkgroup >= 512 && maxComputeWorkgroupSizeX >= 512 ? 32 : 16;
 }
 
 /** One shifted-window attention (`attend_window_tiled`); label `${spec.label} attend`. */
-export function createWindowAttentionKernel(spec: WindowAttentionSpec, buffers: WindowAttentionBuffers): NRKernel {
-  const label = `${spec.label} attend`;
-  return kernel({
-    label,
-    kind: 'window_attend',
-    workgroupSize: [512],
-    dispatch: windowDispatch(spec),
-    inputs: { qkv: buffers.qkv, scales: buffers.scales, prior: buffers.prior },
-    outputs: { attended: buffers.attended },
-    body: unavailable(label),
-  });
-}
+export const createWindowAttentionKernel = (
+  spec: WindowAttentionSpec,
+  buffers: WindowAttentionBuffers,
+  queries: WindowQueries = 32,
+): NRKernel => createWindowAttention(spec, buffers, { queries });
 
-/** `vit_normalize`; label `${spec.label} normalize`. */
-export function createVitNormalizeKernel(spec: VitSpec, buffers: VitNormalizeBuffers): NRKernel {
-  const label = `${spec.label} normalize`;
-  return kernel({
-    label,
-    kind: 'vit_normalize',
-    workgroupSize: [64],
-    dispatch: grid1d(spec.tokens * spec.heads * 8),
-    inputs: { qkv: buffers.qkv, scales: buffers.scales },
-    outputs: { normalized: buffers.normalized },
-    body: unavailable(label),
-  });
-}
+/** `vit_normalize`; label `${spec.label} normalize`. `normalized` has `paddedTokens` rows whose padding stays zero. */
+export const createVitNormalizeKernel = (spec: VitSpec, buffers: VitNormalizeBuffers): NRKernel =>
+  createVitNormalize(spec, buffers);
 
 /** `vit_attend`; label `${spec.label} attend`. */
-export function createVitAttendKernel(spec: VitSpec, buffers: VitAttendBuffers): NRKernel {
-  const label = `${spec.label} attend`;
-  return kernel({
-    label,
-    kind: 'vit_attend',
-    workgroupSize: [64],
-    dispatch: [spec.heads, spec.tokens, 1],
-    inputs: { normalized: buffers.normalized },
-    outputs: { attended: buffers.attended },
-    body: unavailable(label),
-  });
-}
+export const createVitAttendKernel = (spec: VitSpec, buffers: VitAttendBuffers): NRKernel =>
+  createVitAttend(spec, buffers);

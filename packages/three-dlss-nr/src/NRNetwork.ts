@@ -5,14 +5,28 @@
 // ports/browser-webgpu/src/network.js `Network`: everything expensive happens once (the weights are loaded and re-laid
 // out, the graph is recorded for one valid size and its kernels compiled), and a frame is then one
 // `renderer.compute([...])` call - one command encoder, one compute pass, 451 dispatches (plus one word copy per
-// boundary when capturing them).
+// boundary when capturing them). It implements the backend-neutral `NRBackend` interface (`backend/NRBackend.ts`), so
+// it can be swapped with the reference shim (`three-dlss-nr/reference-backend`).
 //
 // Not affiliated with NVIDIA. "DLSS" is an NVIDIA trademark used descriptively; no NVIDIA weights are included.
 
+import type {
+  NRBackend,
+  NRBackendFactory,
+  NRBackendMemory,
+  NRBackendModelSource,
+  NRBackendRequirements,
+  NRFrameTiming,
+  NRModelStagesLike,
+  NRRunOptions,
+} from './backend/NRBackend.js';
+import { NRFrameTimer } from './backend/timing.js';
+import { checkNRDeviceLimits, NR_MIN_WORKGROUP_STORAGE, nrDeviceProblems } from './device.js';
 import { alignUp, geometryFromValid, type NRGeometry } from './geometry.js';
-import { checkNRDeviceLimits } from './device.js';
+import { windowQueriesFor } from './graph/attention.js';
 import { NRGraph } from './graph/Graph.js';
-import { NRModel, type NRModelFiles, type NRModelLoadOptions } from './model/Model.js';
+import type { NRManifest } from './model/manifest.js';
+import { NRModel, type NRModelLoadOptions, type NRModelSource } from './model/Model.js';
 import { attributeBytes, writeBuffer } from './tensors.js';
 import type { NRKernel, NRTensor, StorageBufferAttribute } from './types.js';
 
@@ -34,9 +48,10 @@ export interface NRNetworkOptions {
   renderer: any;
   /**
    * The weights: a loaded `NRModel` (borrowed: the network never disposes it, so one model can serve several networks,
-   * e.g. across resizes), or an in-memory model directory (`NRModelFiles`). Give this or `modelUrl`.
+   * e.g. across resizes), a parsed `{ manifest, stages }`, an in-memory model directory (`generateSyntheticModel()`
+   * from `three-dlss-nr/synthetic`), or a model directory URL. Give this or `modelUrl`.
    */
-  model?: NRModel | NRModelFiles;
+  model?: NRModel | NRBackendModelSource;
   /** URL of a model directory (`manifest.json` and `model/stages/*`, the reference's layout). */
   modelUrl?: string | URL;
   /** Valid image size; the padded field (and every level) follows from it (`geometryFromValid`). */
@@ -44,30 +59,38 @@ export interface NRNetworkOptions {
   height: number;
   /** Keep a copy of every block boundary (79), readable with `readBoundary`, for parity checks. */
   captureBoundaries?: boolean;
-  onProgress?: (progress: NRProgress) => void;
+  /** Progress while loading and compiling: a message, and the same as structured data. */
+  onProgress?: (message: string, progress: NRProgress) => void;
   /** Compile every kernel during `create` (default true); otherwise the first `run` compiles synchronously. */
   compile?: boolean;
-  /** Options for loading `modelUrl` / in-memory model files (SHA-256 verification, custom fetch). */
+  /** Options for loading a URL / in-memory model directory (SHA-256 verification, custom fetch). */
   load?: Omit<NRModelLoadOptions, 'onProgress'>;
 }
 
-export interface NRRunOptions {
-  /**
-   * Run only the first `until` dispatches of the frame (0-451), each with its capture: the reference's bisection
-   * (truncate its recorder's passes at the same index) for finding the first dispatch where two runs diverge.
-   */
-  until?: number;
-}
+/** What the TSL port needs from a device: no features (it never uses f16), the workgroup storage of its kernels. */
+export const TSL_REQUIREMENTS: NRBackendRequirements = {
+  features: [],
+  limits: {
+    maxComputeWorkgroupStorageSize: NR_MIN_WORKGROUP_STORAGE,
+    maxComputeInvocationsPerWorkgroup: 256,
+    maxStorageBuffersPerShaderStage: 8,
+  },
+};
 
-const isModel = (value: unknown): value is NRModel => value instanceof NRModel;
+const isStages = (value: unknown): value is NRModelStagesLike =>
+  typeof value === 'object' && value !== null && 'stages' in value && 'manifest' in value;
 
-/** The network for one resolution. */
-export class NRNetwork {
+/** The network for one resolution: the TSL implementation of `NRBackend`. */
+export class NRNetwork implements NRBackend {
+  readonly id = 'tsl' as const;
+  readonly label = 'three-dlss-nr (TSL)';
+  readonly requirements = TSL_REQUIREMENTS;
   readonly renderer: any;
   readonly model: NRModel;
   readonly geometry: NRGeometry;
   readonly graph: NRGraph;
   private readonly borrowedModel: boolean;
+  private readonly timer: NRFrameTimer;
   private validated = false;
   private disposed = false;
 
@@ -77,11 +100,13 @@ export class NRNetwork {
     this.borrowedModel = borrowedModel;
     this.graph = graph;
     this.geometry = graph.geometry;
+    this.timer = new NRFrameTimer(renderer.backend.device);
   }
 
   /** Load the weights (unless given), record the graph for `width x height`, and compile its kernels. */
   static async create(options: NRNetworkOptions): Promise<NRNetwork> {
-    const { renderer, width, height, onProgress } = options;
+    const { renderer, width, height } = options;
+    const progress = (update: NRProgress) => options.onProgress?.(update.message, update);
     if (!renderer) throw new Error('NRNetwork.create needs a WebGPURenderer');
     if (renderer.hasInitialized && !renderer.hasInitialized()) await renderer.init();
     const device: GPUDevice | undefined = renderer.backend?.device;
@@ -91,17 +116,19 @@ export class NRNetwork {
 
     let model: NRModel;
     let borrowed = false;
-    if (isModel(options.model)) {
-      model = options.model;
+    const source = options.model ?? options.modelUrl;
+    if (source instanceof NRModel) {
+      model = source;
       borrowed = true;
+    } else if (isStages(source)) {
+      model = new NRModel(source.manifest as NRManifest, source.stages);
     } else {
-      const source = options.model ?? options.modelUrl;
       if (!source) throw new Error('NRNetwork.create needs `model` or `modelUrl`');
-      onProgress?.({ phase: 'loading', message: 'loading weights' });
-      model = await NRModel.load(source, {
+      progress({ phase: 'loading', message: 'loading weights' });
+      model = await NRModel.load(source as NRModelSource, {
         ...options.load,
         onProgress: (loaded, total) =>
-          onProgress?.({
+          progress({
             phase: 'loading',
             message: `loading weights ${(loaded / 1048576).toFixed(0)} / ${(total / 1048576).toFixed(0)} MiB`,
             loaded,
@@ -110,17 +137,20 @@ export class NRNetwork {
       });
     }
 
-    onProgress?.({ phase: 'recording', message: 'recording the graph' });
-    const graph = new NRGraph(model, geometry, { captureBoundaries: options.captureBoundaries ?? false });
+    progress({ phase: 'recording', message: 'recording the graph' });
+    const graph = new NRGraph(model, geometry, {
+      captureBoundaries: options.captureBoundaries ?? false,
+      windowQueries: windowQueriesFor(device),
+    });
     const network = new NRNetwork(renderer, model, borrowed, graph);
 
     if (options.compile ?? true) {
-      // One node at a time (three's own progress callback needs `ProgressEvent`, which Node lacks); programs are
-      // shared by WGSL text, so most nodes after the first of a shape only build bindings.
+      // One node at a time (three's own progress callback needs `ProgressEvent`, which Node lacks). Programs are
+      // shared by WGSL text, so most nodes after the first of a shape only build their bindings.
       const nodes = graph.passes.map((pass) => pass.kernel.node);
       for (const [index, node] of nodes.entries()) {
         await renderer.compileComputeAsync(node);
-        onProgress?.({
+        progress({
           phase: 'compiling',
           message: `compiling kernels ${index + 1}/${nodes.length}`,
           loaded: index + 1,
@@ -128,7 +158,7 @@ export class NRNetwork {
         });
       }
     }
-    onProgress?.({
+    progress({
       phase: 'ready',
       message:
         `ready: ${graph.dispatches.length} dispatches, ` +
@@ -147,12 +177,12 @@ export class NRNetwork {
     return this.graph.head;
   }
 
-  /** Dispatches in a frame (451). */
+  /** Compute dispatches in a frame: 451, plus one word copy per boundary when capturing (`NRBackend`). */
   get dispatchCount(): number {
-    return this.graph.dispatches.length;
+    return this.graph.passes.length;
   }
 
-  /** Dispatch labels in order (the reference's). */
+  /** Dispatch labels in order (the reference's; captures excluded). */
   get dispatchLabels(): string[] {
     return this.graph.labels;
   }
@@ -162,43 +192,59 @@ export class NRNetwork {
     return [...this.graph.boundaries.keys()];
   }
 
-  /** The kernels of one frame (or its first `until` dispatches), in submission order. */
-  kernels({ until }: NRRunOptions = {}): NRKernel[] {
-    const cut = until ?? this.graph.dispatches.length;
-    if (!Number.isInteger(cut) || cut < 0 || cut > this.graph.dispatches.length) {
-      throw new RangeError(`until ${until} is not a dispatch count in [0, ${this.graph.dispatches.length}]`);
+  /** GPU bytes of the activations (boundary copies included) and of the weights this network binds. */
+  get memory(): NRBackendMemory {
+    let weightBytes = 0;
+    for (const attribute of this.graph.weightAttributes) weightBytes += attribute.array.byteLength;
+    return { activationBytes: this.graph.tensors.total, weightBytes };
+  }
+
+  /** The kernels of one frame (or of its first `until` dispatches, each with its capture), in submission order. */
+  kernels({ until }: Pick<NRRunOptions, 'until'> = {}): NRKernel[] {
+    const count = this.graph.dispatches.length;
+    const cut = until ?? count;
+    if (!Number.isInteger(cut) || cut < 0 || cut > count) {
+      throw new RangeError(`until ${until} is not a dispatch count in [0, ${count}]`);
     }
     return this.graph.passes.filter((pass) => pass.index < cut).map((pass) => pass.kernel);
   }
 
   /** Replace the input features with `data` (f32 `[fullRows][16]`); uploaded before the next frame. */
   writeFeatures(data: Float32Array): void {
+    this.assertLive();
     const expected = this.geometry.fullRows * 16;
     if (data.length !== expected) {
-      throw new RangeError(`features hold ${data.length} values; the ${this.fieldSize} field needs ${expected}`);
+      const field = `${this.geometry.fullWidth}x${this.geometry.fullHeight}`;
+      throw new RangeError(`features hold ${data.length} values; the ${field} field needs ${expected}`);
     }
     writeBuffer(this.graph.features, data);
   }
 
   /**
-   * One frame as one compute pass. Resolves once the GPU has finished. The first full frame (and every truncated one)
-   * runs inside a validation error scope: a command buffer WebGPU rejects is dropped whole, and the only symptom
-   * would be outputs that never change.
+   * One frame as one compute pass (or its first `until` dispatches: bisection against the reference, which truncates
+   * its recorder at the same index). Resolves once the GPU has finished, with the frame's timing (`timing: true` adds
+   * GPU time from timestamp queries when the device has them). The first full frame, and every truncated one, runs
+   * inside a validation error scope: a command buffer WebGPU rejects is dropped whole, and the only symptom would be
+   * outputs that never change.
    */
-  async run(options: NRRunOptions = {}): Promise<void> {
+  async run(options: NRRunOptions = {}): Promise<NRFrameTiming> {
     this.assertLive();
     const kernels = this.kernels(options);
-    if (kernels.length === 0) return;
     const device: GPUDevice = this.renderer.backend.device;
     const checking = !this.validated || options.until !== undefined;
-    if (checking) device.pushErrorScope('validation');
-    this.renderer.compute(kernels.map((k) => k.node));
-    if (checking) {
-      const error = await device.popErrorScope();
-      if (error) throw new Error(`the frame was rejected: ${error.message}`);
-      if (options.until === undefined) this.validated = true;
-    }
-    await device.queue.onSubmittedWorkDone();
+    let rejected: GPUError | null = null;
+    const timing = await this.timer.measure(
+      async () => {
+        if (kernels.length === 0) return;
+        if (checking) device.pushErrorScope('validation');
+        this.renderer.compute(kernels.map((k) => k.node));
+        if (checking) rejected = await device.popErrorScope();
+      },
+      { gpu: (options.timing ?? false) && !checking },
+    );
+    if (rejected) throw new Error(`the frame was rejected: ${(rejected as GPUError).message}`);
+    if (checking && options.until === undefined) this.validated = true;
+    return timing;
   }
 
   /** The f32 RGBA head, `[fullRows][4]`. */
@@ -219,13 +265,12 @@ export class NRNetwork {
     return this.readValid(this.tensor(label));
   }
 
-  /** The tensor allocated under `label` (first of that label). */
+  /** The tensor allocated under `label` (the first of that label). */
   tensor(label: string): NRTensor {
     const found = this.graph.tensors.byLabel(label)[0];
     if (!found) {
-      throw new Error(
-        `no tensor labelled "${label}"; have ${[...this.graph.tensors.byKey.values()].map((t) => t.label).join(', ')}`,
-      );
+      const labels = [...this.graph.tensors.byKey.values()].map((t) => t.label).join(', ');
+      throw new Error(`no tensor labelled "${label}"; have ${labels}`);
     }
     return found;
   }
@@ -249,10 +294,7 @@ export class NRNetwork {
       this.model.dispose();
     }
     this.graph.tensors.clear();
-  }
-
-  private get fieldSize(): string {
-    return `${this.geometry.fullWidth}x${this.geometry.fullHeight}`;
+    this.timer.dispose();
   }
 
   private assertLive(): void {
@@ -274,3 +316,17 @@ export class NRNetwork {
     return new Uint8Array(buffer, 0, tensor.validBytes);
   }
 }
+
+/** The TSL port as an `NRBackend` factory (the benchmark, the fidelity suite and the demo look for this name). */
+export const tslBackend: NRBackendFactory<NRNetwork> = {
+  id: 'tsl',
+  label: 'three-dlss-nr (TSL)',
+  requirements: TSL_REQUIREMENTS,
+  unavailableReason(renderer: any): string | null {
+    const device: GPUDevice | undefined = renderer?.backend?.device;
+    if (!device) return 'the renderer has no WebGPU device';
+    const problems = nrDeviceProblems(device);
+    return problems.length ? `this WebGPU device cannot run the network: ${problems.join('; ')}` : null;
+  },
+  create: (options) => NRNetwork.create(options),
+};

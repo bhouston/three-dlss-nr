@@ -15,9 +15,10 @@ export const UPSTREAM = {
 /** Package version. */
 export const VERSION = '0.1.0';
 
-export { NRNetwork, type NRNetworkOptions, type NRProgress, type NRRunOptions } from './NRNetwork.js';
+export { NRNetwork, TSL_REQUIREMENTS, tslBackend, type NRNetworkOptions, type NRProgress } from './NRNetwork.js';
 
 export { NRGraph, type NRGraphOptions, type NRGraphPass } from './graph/Graph.js';
+export { windowQueriesFor, type WindowQueries } from './graph/attention.js';
 
 export {
   NRModel,
@@ -119,3 +120,25 @@ export {
   wordAttribute,
   writeBuffer,
 } from './tensors.js';
+
+// Backend-neutral network interface (the TSL port and the reference shim, `three-dlss-nr/reference-backend`).
+export {
+  rendererDevice,
+  unmetRequirements,
+  type NRBackend,
+  type NRBackendCreateOptions,
+  type NRBackendFactory,
+  type NRBackendGeometry,
+  type NRBackendId,
+  type NRBackendLimit,
+  type NRBackendMemory,
+  type NRBackendModelSource,
+  type NRBackendRequirements,
+  type NRFrameTiming,
+  type NRManifestLike,
+  type NRModelFilesLike,
+  type NRModelStagesLike,
+  type NRRunOptions,
+  type NRTimingMethod,
+} from './backend/NRBackend.js';
+export { NRFrameTimer, summarizeMilliseconds } from './backend/timing.js';
