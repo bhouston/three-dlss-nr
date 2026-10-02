@@ -115,15 +115,18 @@ export class NRNetwork {
     const network = new NRNetwork(renderer, model, borrowed, graph);
 
     if (options.compile ?? true) {
+      // One node at a time (three's own progress callback needs `ProgressEvent`, which Node lacks); programs are
+      // shared by WGSL text, so most nodes after the first of a shape only build bindings.
       const nodes = graph.passes.map((pass) => pass.kernel.node);
-      await renderer.compileComputeAsync(nodes, (event: { loaded: number; total: number }) =>
+      for (const [index, node] of nodes.entries()) {
+        await renderer.compileComputeAsync(node);
         onProgress?.({
           phase: 'compiling',
-          message: `compiling kernels ${event.loaded}/${event.total}`,
-          loaded: event.loaded,
-          total: event.total,
-        }),
-      );
+          message: `compiling kernels ${index + 1}/${nodes.length}`,
+          loaded: index + 1,
+          total: nodes.length,
+        });
+      }
     }
     onProgress?.({
       phase: 'ready',
