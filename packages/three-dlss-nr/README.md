@@ -22,6 +22,11 @@ npm install three-dlss-nr three
 You supply the weights; none are included. NVIDIA's trained weights are proprietary and are not distributed by
 this package or by OpenDLSS-NR. See the [repository README](https://github.com/bhouston/three-dlss-nr#weights).
 
+## Contributing
+
+How the port's kernels are written and tested against the reference (KernelBuilder, the numerics helpers, the
+reference runner, and the TSL pitfalls): [src/README-internals.md](src/README-internals.md).
+
 ## License
 
 MIT. The package's LICENSE carries both this project's copyright and OpenDLSS-NR's MIT notice; NOTICE carries
