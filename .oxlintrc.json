@@ -1,6 +1,6 @@
 {
   "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "ignorePatterns": ["**/routeTree.gen.ts", "reference/**"],
+  "ignorePatterns": ["**/routeTree.gen.ts", "reference/**", "packages/three-dlss-nr/vendor/**"],
   "categories": {
     "correctness": "error",
     "suspicious": "warn"

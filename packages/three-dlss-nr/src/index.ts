@@ -76,3 +76,25 @@ export {
   wordAttribute,
   writeBuffer,
 } from './tensors.js';
+
+// Backend-neutral network interface (the TSL port and the reference shim, `three-dlss-nr/reference-backend`).
+export {
+  rendererDevice,
+  unmetRequirements,
+  type NRBackend,
+  type NRBackendCreateOptions,
+  type NRBackendFactory,
+  type NRBackendGeometry,
+  type NRBackendId,
+  type NRBackendLimit,
+  type NRBackendMemory,
+  type NRBackendModelSource,
+  type NRBackendRequirements,
+  type NRFrameTiming,
+  type NRManifestLike,
+  type NRModelFilesLike,
+  type NRModelStagesLike,
+  type NRRunOptions,
+  type NRTimingMethod,
+} from './backend/NRBackend.js';
+export { NRFrameTimer, summarizeMilliseconds } from './backend/timing.js';

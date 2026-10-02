@@ -18,7 +18,9 @@ NVIDIA's DLSS 5 Neural Rendering (NR). It ships a Vulkan reference and a bit-exa
 `three-dlss-nr` implements the same network with three.js
 [TSL](https://threejs.org/docs/#api/en/nodes/TSL) compute kernels (`three/webgpu` + `three/tsl`), so it can run
 inside a `WebGPURenderer` scene. The port is checked against the reference WebGPU implementation block by block on
-the same inputs and weights.
+the same inputs and weights. For speed and quality comparisons, the optional
+`three-dlss-nr/reference-backend` entry point runs that reference WebGPU port itself, unchanged, on three.js' GPUDevice
+behind the same backend interface (see the [package README](packages/three-dlss-nr#backends)).
 
 This repository is a pnpm monorepo:
 
