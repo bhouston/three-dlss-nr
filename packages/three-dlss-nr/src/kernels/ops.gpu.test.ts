@@ -370,9 +370,22 @@ describe('copy_words', () => {
   });
 });
 
+/**
+ * Normalized WGSL with the helper functions sorted: three emits layout functions in the order its node cache first met
+ * them, which depends on what was built before in the same renderer.
+ */
+function stableWGSL(wgsl: string): string {
+  const [head, ...functions] = normalizeWGSL(wgsl).split(/\n(?=fn )/);
+  const main = functions.findIndex((block) => block.startsWith('fn main'));
+  const [entry] = functions.splice(main, 1);
+  return [head, ...functions.toSorted(), entry].join('\n');
+}
+
+/** A small tensor for WGSL snapshots. */
+const t = (format: TensorFormat, rows = 64, channels = 32) => ours(`snap ${format}`, rows, channels, format);
+
 describe('generated WGSL', () => {
   it('one snapshot per kernel kind (catches codegen drift on a three bump)', () => {
-    const t = (format: TensorFormat, rows = 64, channels = 32) => ours(`snap ${format}`, rows, channels, format);
     const levels = { channels: 32, inWidth: 8, inHeight: 8, outWidth: 4, outHeight: 4 };
     const kernels = [
       createConvertF32ToF16(
@@ -396,6 +409,6 @@ describe('generated WGSL', () => {
       ),
       createCopyWords({ label: 'capture' }, { source: t('e4'), target: t('e4') }),
     ];
-    for (const k of kernels) expect(normalizeWGSL(kernelWGSL(gpu.renderer, k))).toMatchSnapshot(k.kind);
+    for (const k of kernels) expect(stableWGSL(kernelWGSL(gpu.renderer, k))).toMatchSnapshot(k.kind);
   });
 });
