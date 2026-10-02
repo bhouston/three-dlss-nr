@@ -1,0 +1,774 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`FP8 GEMM WGSL > matches the snapshot (codegen drift on a three bump shows here) 1`] = `
+{
+  "ViT contract 4096 (partition 1024, E4 skip)": "291f010308847c6b",
+  "ViT projection 1024 (partition 256, E4 skip)": "739f3d7d2e8b538a",
+  "ViT qkv 1024 half (partition 512)": "9d3f83ce9d3bdb4b",
+  "decoder transition 128->64 half": "faf0e1e7ecd06b7c",
+  "dense contract 128->32 dual, f16 skip": "bf7e40cfa8821a7b",
+  "dense expand 32->128 SiLU": "79f4a67ef4b3e85a",
+  "expert contract 256 (8x 128->32)": "178fcf1e6f7bc1da",
+  "expert contract 64 (2x 128->32)": "b4f1a71052ad5d36",
+  "expert expand 256 (8x128, broadcast, SiLU)": "a2637ced23a370e8",
+  "expert expand 64 (2x128, broadcast, SiLU)": "905f1e4a47763029",
+  "expert merge 64 dual, E4 skip": "114a13bec78834bd",
+  "projection 32 E4, f16 skip": "65a4098d41bcd55d",
+  "projection 32 dual, f16 skip": "0a7538b060247930",
+  "projection 64 E4, E4 skip": "288dc916db963693",
+  "qkv 128->384 half": "787c01a69de74315",
+  "qkv 32->96 half": "a85033bd187e691b",
+  "split contract (8x 256->64)": "8a601777fb88c5b3",
+  "split expand (8x 64->256, SiLU)": "51d3d53f55ca9b0a",
+  "split layer0 512": "5a531a2f07588598",
+  "split merge 512, E4 skip": "9f4031c51835c806",
+  "transition 30-31 (512->1024)": "9e19c755f22e2431",
+  "transition 38-39 1024->512 half (partition 256)": "d381a89beafbc67b",
+  "transition 4-5 (32->64)": "03fb9d83d7970cb2",
+}
+`;
+
+exports[`FP8 GEMM WGSL > matches the snapshot (codegen drift on a three bump shows here) 2`] = `
+"// Three.js r186 - Node System
+
+// directives
+
+// system
+var<private> instanceIndex : u32;
+
+// locals
+var<workgroup> nr_tile_a: array< vec4<f32>, 256 >;
+var<workgroup> nr_tile_ea: array< vec4<i32>, 256 >;
+var<workgroup> nr_tile_b: array< vec4<f32>, 256 >;
+var<workgroup> nr_tile_eb: array< vec4<i32>, 256 >;
+
+// structs
+
+// uniforms
+
+struct nr_residualStruct {
+	value : array< u32 >
+};
+@binding( 0 ) @group( 0 )
+var<storage, read> nr_residual : nr_residualStruct;
+
+struct nr_scaleStruct {
+	value : array< u32 >
+};
+@binding( 1 ) @group( 0 )
+var<storage, read> nr_scale : nr_scaleStruct;
+
+struct nr_inputStruct {
+	value : array< u32 >
+};
+@binding( 2 ) @group( 0 )
+var<storage, read> nr_input : nr_inputStruct;
+
+struct nr_operandsStruct {
+	value : array< u32 >
+};
+@binding( 3 ) @group( 0 )
+var<storage, read> nr_operands : nr_operandsStruct;
+
+struct nr_weightsStruct {
+	value : array< u32 >
+};
+@binding( 4 ) @group( 0 )
+var<storage, read> nr_weights : nr_weightsStruct;
+
+struct nr_outputStruct {
+	value : array< u32 >
+};
+@binding( 5 ) @group( 0 )
+var<storage, read_write> nr_output : nr_outputStruct;
+
+struct nr_outputHalfStruct {
+	value : array< u32 >
+};
+@binding( 6 ) @group( 0 )
+var<storage, read_write> nr_outputHalf : nr_outputHalfStruct;
+
+// vars
+
+// codes
+fn nr_round_shift_right_even ( value : u32, shift : u32 ) -> u32 {
+
+	var nodeVar# : u32;
+	var nodeVar# : u32;
+	var nodeVar# : u32;
+	var nodeVar# : u32;
+	var nodeVar# : u32;
+	var nodeVar# : u32;
+	var nodeVar# : u32;
+	var nodeVar# : u32;
+	var nodeVar# : u32;
+	var nodeVar# : u32;
+
+	nodeVar# = min( max( shift, 1u ), 31u );
+	nodeVar# = ( value & ( ( 1u << nodeVar# ) - 1u ) );
+	nodeVar# = ( 1u << ( nodeVar# - 1u ) );
+	nodeVar# = ( value >> nodeVar# );
+	nodeVar# = select( 0u, 1u, ( ( nodeVar# > nodeVar# ) || ( ( nodeVar# == nodeVar# ) && ( ( nodeVar# & 1u ) != 0u ) ) ) );
+	nodeVar# = select( ( nodeVar# + nodeVar# ), 0u, ( shift > 31u ) );
+	nodeVar# = select( nodeVar#, value, ( shift == 0u ) );
+
+	return nodeVar#;
+
+}
+
+fn nr_f16_bits ( value : f32 ) -> u32 {
+
+	var nodeVar# : u32;
+	var nodeVar# : u32;
+	var nodeVar# : u32;
+	var nodeVar# : u32;
+	var nodeVar# : u32;
+	var nodeVar# : u32;
+	var nodeVar# : i32;
+	var nodeVar# : u32;
+	var nodeVar# : i32;
+	var nodeVar# : u32;
+	var nodeVar# : bool;
+	var nodeVar# : i32;
+	var nodeVar# : u32;
+	var nodeVar# : u32;
+	var nodeVar# : u32;
+	var nodeVar# : i32;
+	var nodeVar# : u32;
+	var nodeVar# : u32;
+	var nodeVar# : u32;
+	var nodeVar# : u32;
+	var nodeVar# : u32;
+	var nodeVar# : u32;
+	var nodeVar# : u32;
+
+	nodeVar# = bitcast<u32>( value );
+	nodeVar# = ( nodeVar# & 8388607u );
+	nodeVar# = select( 31744u, 32256u, ( nodeVar# != 0u ) );
+	nodeVar# = ( ( nodeVar# >> 23u ) & 255u );
+	nodeVar# = ( i32( nodeVar# ) - 112 );
+	nodeVar# = select( ( ( ( nodeVar# >> 16u ) & 32768u ) | nr_round_shift_right_even( ( nodeVar# | 8388608u ), u32( ( 14 - nodeVar# ) ) ) ), ( ( nodeVar# >> 16u ) & 32768u ), ( nodeVar# < -10 ) );
+	nodeVar# = nr_round_shift_right_even( nodeVar#, 13u );
+	nodeVar# = ( nodeVar# == 1024u );
+	nodeVar# = select( 0, 1, nodeVar# );
+	nodeVar# = select( nodeVar#, 0u, nodeVar# );
+	nodeVar# = ( nodeVar# + nodeVar# );
+	nodeVar# = select( ( ( ( ( nodeVar# >> 16u ) & 32768u ) | ( u32( nodeVar# ) << 10u ) ) | nodeVar# ), ( ( ( nodeVar# >> 16u ) & 32768u ) | 31744u ), ( nodeVar# >= 31 ) );
+	nodeVar# = select( nodeVar#, nodeVar#, ( nodeVar# <= 0 ) );
+	nodeVar# = select( nodeVar#, ( ( ( nodeVar# >> 16u ) & 32768u ) | 31744u ), ( nodeVar# >= 31 ) );
+	nodeVar# = select( nodeVar#, ( ( ( nodeVar# >> 16u ) & 32768u ) | nodeVar# ), ( nodeVar# == 255u ) );
+
+	return nodeVar#;
+
+}
+
+fn nr_f16_to_f32 ( bits : u32 ) -> f32 {
+
+	var nodeVar# : u32;
+	var nodeVar# : u32;
+	var nodeVar# : u32;
+	var nodeVar# : u32;
+	var nodeVar# : u32;
+	var nodeVar# : u32;
+	var nodeVar# : u32;
+	var nodeVar# : u32;
+	var nodeVar# : u32;
+
+	nodeVar# = ( bits & 1023u );
+	nodeVar# = ( countLeadingZeros( nodeVar# ) - 21u );
+	nodeVar# = select( ( ( ( ( bits & 32768u ) << 16u ) | ( ( 113u - nodeVar# ) << 23u ) ) | ( ( ( nodeVar# << nodeVar# ) & 1023u ) << 13u ) ), ( ( bits & 32768u ) << 16u ), ( nodeVar# == 0u ) );
+	nodeVar# = ( ( bits >> 10u ) & 31u );
+	nodeVar# = select( ( ( ( ( bits & 32768u ) << 16u ) | ( ( nodeVar# + 112u ) << 23u ) ) | ( nodeVar# << 13u ) ), ( ( ( ( bits & 32768u ) << 16u ) | 2139095040u ) | ( nodeVar# << 13u ) ), ( nodeVar# == 31u ) );
+	nodeVar# = select( nodeVar#, nodeVar#, ( nodeVar# == 0u ) );
+
+	return bitcast<f32>( nodeVar# );
+
+}
+
+fn nr_round_f16 ( value : f32 ) -> f32 {
+
+	return nr_f16_to_f32( nr_f16_bits( value ) );
+
+}
+
+fn nr_gemm_accumulator_exponent ( accumulator : f32 ) -> i32 {
+
+	var nodeVar# : i32;
+	var nodeVar# : u32;
+	var nodeVar# : i32;
+
+	nodeVar# = bitcast<u32>( accumulator );
+	nodeVar# = select( max( ( i32( ( ( nodeVar# >> 23u ) & 255u ) ) - 127 ), -14 ), -21, ( ( nodeVar# & 2147483647u ) == 0u ) );
+
+	return nodeVar#;
+
+}
+
+fn nr_pow2 ( e : i32 ) -> f32 {
+
+	return bitcast<f32>( ( u32( ( clamp( e, -126, 127 ) + 127 ) ) << 23u ) );
+
+}
+
+fn nr_gemm_group_finish ( units : f32, maximum_exponent : i32 ) -> f32 {
+
+	var nodeVar# : u32;
+	var nodeVar# : u32;
+	var nodeVar# : u32;
+
+	nodeVar# = bitcast<u32>( nr_round_f16( ( units * nr_pow2( ( maximum_exponent - 13 ) ) ) ) );
+	nodeVar# = select( nodeVar#, 0u, ( ( nodeVar# & 2147483647u ) == 0u ) );
+
+	return bitcast<f32>( nodeVar# );
+
+}
+
+fn nr_publish_e4_code_gemm ( value : f32 ) -> u32 {
+
+	var nodeVar# : u32;
+	var nodeVar# : f32;
+	var nodeVar# : u32;
+	var nodeVar# : u32;
+	var nodeVar# : u32;
+	var nodeVar# : u32;
+	var nodeVar# : u32;
+	var nodeVar# : u32;
+
+	nodeVar# = min( abs( value ), 448.0 );
+	nodeVar# = bitcast<u32>( nodeVar# );
+	nodeVar# = select( ( ( ( ( ( nodeVar# + 524287u ) + ( ( nodeVar# >> 20u ) & 1u ) ) & 4293918720u ) >> 20u ) - 960u ), u32( round( ( nodeVar# * 512.0 ) ) ), ( nodeVar# < 0.015625 ) );
+	nodeVar# = select( 0u, 128u, ( value < 0.0 ) );
+	nodeVar# = select( ( nodeVar# | nodeVar# ), 0u, ( ( ( bitcast<u32>( value ) & 2147483647u ) > 2139095040u ) || ( nodeVar# == 0.0 ) ) );
+
+	return nodeVar#;
+
+}
+
+@compute @workgroup_size( 8, 16, 1 )
+fn main( @builtin( local_invocation_index ) invocationLocalIndex : u32,
+	@builtin( global_invocation_id ) globalId : vec3<u32>,
+	@builtin( workgroup_id ) workgroupId : vec3<u32>,
+	@builtin( local_invocation_id ) localId : vec3<u32>,
+	@builtin( num_workgroups ) numWorkgroups : vec3<u32> ) {
+
+	// local vars
+
+	var nodeVar# : u32;
+	var nodeVar# : u32;
+	var nodeVar# : u32;
+	var nodeVar# : u32;
+	var nodeVar# : f32;
+	var nodeVar# : u32;
+	var nodeVar# : f32;
+	var nodeVar# : f32;
+	var nodeVar# : u32;
+	var nodeVar# : f32;
+	var nodeVar# : u32;
+	var nodeVar# : u32;
+	var nodeVar# : u32;
+	var nodeVar# : f32;
+	var nodeVar# : f32;
+	var nodeVar# : f32;
+	var nodeVar# : f32;
+	var nodeVar# : u32;
+	var nodeVar# : f32;
+	var nodeVar# : f32;
+	var nodeVar# : u32;
+	var nodeVar# : f32;
+	var nodeVar# : u32;
+	var nodeVar# : u32;
+	var nodeVar# : u32;
+	var nodeVar# : f32;
+	var nodeVar# : f32;
+	var nodeVar# : f32;
+	var nodeVar# : f32;
+	var nodeVar# : u32;
+	var nodeVar# : f32;
+	var nodeVar# : f32;
+	var nodeVar# : u32;
+	var nodeVar# : f32;
+	var nodeVar# : u32;
+	var nodeVar# : u32;
+	var nodeVar# : u32;
+	var nodeVar# : f32;
+	var nodeVar# : f32;
+	var nodeVar# : f32;
+	var nodeVar# : f32;
+	var nodeVar# : u32;
+	var nodeVar# : f32;
+	var nodeVar# : f32;
+	var nodeVar# : u32;
+	var nodeVar# : f32;
+	var nodeVar# : u32;
+	var nodeVar# : u32;
+	var nodeVar# : u32;
+	var nodeVar# : f32;
+	var nodeVar# : f32;
+	var nodeVar# : f32;
+	var nodeVar# : u32;
+	var nodeVar# : f32;
+	var nodeVar# : u32;
+	var nodeVar# : f32;
+	var nodeVar# : f32;
+	var nodeVar# : u32;
+	var nodeVar# : f32;
+	var nodeVar# : u32;
+	var nodeVar# : u32;
+	var nodeVar# : u32;
+	var nodeVar# : f32;
+	var nodeVar# : f32;
+	var nodeVar# : f32;
+	var nodeVar# : f32;
+	var nodeVar# : u32;
+	var nodeVar# : f32;
+	var nodeVar# : f32;
+	var nodeVar# : u32;
+	var nodeVar# : f32;
+	var nodeVar# : u32;
+	var nodeVar# : u32;
+	var nodeVar# : u32;
+	var nodeVar# : f32;
+	var nodeVar# : f32;
+	var nodeVar# : f32;
+	var nodeVar# : f32;
+	var nodeVar# : u32;
+	var nodeVar# : f32;
+	var nodeVar# : f32;
+	var nodeVar# : u32;
+	var nodeVar# : f32;
+	var nodeVar# : u32;
+	var nodeVar# : u32;
+	var nodeVar# : u32;
+	var nodeVar# : f32;
+	var nodeVar# : f32;
+	var nodeVar# : f32;
+	var nodeVar# : f32;
+	var nodeVar# : u32;
+	var nodeVar# : f32;
+	var nodeVar# : f32;
+	var nodeVar# : u32;
+	var nodeVar# : f32;
+	var nodeVar# : u32;
+	var nodeVar# : u32;
+	var nodeVar# : u32;
+	var nodeVar# : f32;
+	var nodeVar# : f32;
+	var nodeVar# : f32;
+	var nodeVar# : u32;
+	var nodeVar# : u32;
+	var nodeVar# : u32;
+	var nodeVar# : u32;
+	var nodeVar# : u32;
+	var nodeVar# : bool;
+	var nodeVar# : u32;
+	var nodeVar# : u32;
+	var nodeVar# : u32;
+	var nodeVar# : u32;
+	var nodeVar# : u32;
+	var nodeVar# : u32;
+	var nodeVar# : u32;
+	var nodeVar# : u32;
+	var nodeVar# : u32;
+	var nodeVar# : u32;
+	var nodeVar# : bool;
+	var nodeVar# : u32;
+	var nodeVar# : u32;
+	var nodeVar# : u32;
+	var nodeVar# : u32;
+	var nodeVar# : u32;
+	var nodeVar# : i32;
+	var nodeVar# : i32;
+	var nodeVar# : i32;
+	var nodeVar# : i32;
+	var nodeVar# : i32;
+	var nodeVar# : i32;
+	var nodeVar# : i32;
+	var nodeVar# : i32;
+	var nodeVar# : f32;
+	var nodeVar# : f32;
+	var nodeVar# : f32;
+	var nodeVar# : f32;
+	var nodeVar# : f32;
+	var nodeVar# : f32;
+	var nodeVar# : f32;
+	var nodeVar# : f32;
+	var nodeVar# : f32;
+	var nodeVar# : f32;
+	var nodeVar# : f32;
+	var nodeVar# : f32;
+	var nodeVar# : f32;
+	var nodeVar# : f32;
+	var nodeVar# : f32;
+	var nodeVar# : f32;
+	var nodeVar# : u32;
+	var nodeVar# : u32;
+	var nodeVar# : u32;
+	var nodeVar# : u32;
+	var nodeVar# : u32;
+	var nodeVar# : u32;
+	var nodeVar# : u32;
+	var nodeVar# : u32;
+	var nodeVar# : u32;
+	var nodeVar# : u32;
+	var nodeVar# : u32;
+	var nodeVar# : u32;
+	var nodeVar# : u32;
+	var nodeVar# : u32;
+	var nodeVar# : u32;
+	var nodeVar# : u32;
+	var nodeVar# : u32;
+	var nodeVar# : u32;
+	var nodeVar# : u32;
+	var nodeVar# : u32;
+	var nodeVar# : u32;
+	var nodeVar# : u32;
+	var nodeVar# : u32;
+	var nodeVar# : u32;
+	var nodeVar# : u32;
+	var nodeVar# : u32;
+	var nodeVar# : u32;
+	var nodeVar# : u32;
+	var nodeVar# : u32;
+	var nodeVar# : u32;
+	var nodeVar# : u32;
+	var nodeVar# : u32;
+	var nodeVar# : u32;
+	var nodeVar# : vec4<i32>;
+	var nodeVar# : vec4<i32>;
+	var nodeVar# : vec4<i32>;
+	var nodeVar# : vec4<i32>;
+	var nodeVar# : vec4<i32>;
+	var nodeVar# : vec4<i32>;
+	var nodeVar# : vec4<i32>;
+	var nodeVar# : vec4<i32>;
+	var nodeVar# : vec4<i32>;
+	var nodeVar# : vec4<i32>;
+	var nodeVar# : vec4<i32>;
+	var nodeVar# : vec4<i32>;
+	var nodeVar# : vec4<i32>;
+	var nodeVar# : vec4<i32>;
+	var nodeVar# : u32;
+	var nodeVar# : vec4<f32>;
+	var nodeVar# : vec4<f32>;
+	var nodeVar# : vec4<f32>;
+	var nodeVar# : vec4<f32>;
+	var nodeVar# : vec4<f32>;
+	var nodeVar# : vec4<f32>;
+	var nodeVar# : vec4<f32>;
+	var nodeVar# : vec4<f32>;
+	var nodeVar# : vec4<f32>;
+	var nodeVar# : vec4<f32>;
+	var nodeVar# : vec4<f32>;
+	var nodeVar# : vec4<f32>;
+	var nodeVar# : vec4<f32>;
+	var nodeVar# : vec4<f32>;
+	var nodeVar# : u32;
+	var nodeVar# : u32;
+	var nodeVar# : u32;
+	var nodeVar# : u32;
+	var nodeVar# : u32;
+	var nodeVar# : u32;
+	var nodeVar# : u32;
+	var nodeVar# : u32;
+	var nodeVar# : u32;
+	var nodeVar# : u32;
+	var nodeVar# : u32;
+	var nodeVar# : u32;
+
+	// system
+	instanceIndex = globalId.x
+		+ globalId.y * ( 8 * numWorkgroups.x )
+		+ globalId.z * ( 8 * numWorkgroups.x ) * ( 16 * numWorkgroups.y );
+
+	// flow
+	// code
+
+	// flow -> gemm_fp8
+	nodeVar# = workgroupId.y;
+	nodeVar# = ( ( nodeVar# * 32u ) + ( localId.y * 2u ) );
+	nodeVar# = ( ( workgroupId.x * 32u ) + ( localId.x * 4u ) );
+	nodeVar# = ( ( ( nodeVar# + 0u ) * 32u ) + nodeVar# );
+	nodeVar# = ( nodeVar# + 0u );
+	nodeVar# = select( unpack2x16float(nr_residual.value[ ( nodeVar# >> 1u ) ]).y, unpack2x16float(nr_residual.value[ ( nodeVar# >> 1u ) ]).x, ( ( nodeVar# & 1u ) == 0u ) );
+	nodeVar# = ( nodeVar# + 0u );
+	nodeVar# = select( unpack2x16float(nr_scale.value[ ( nodeVar# >> 1u ) ]).y, unpack2x16float(nr_scale.value[ ( nodeVar# >> 1u ) ]).x, ( ( nodeVar# & 1u ) == 0u ) );
+	nodeVar# = bitcast<u32>( nr_round_f16( ( nodeVar# * nodeVar# ) ) );
+	nodeVar# = select( nodeVar#, 0u, ( ( nodeVar# & 2147483647u ) == 0u ) );
+	nodeVar# = select( 0.0, bitcast<f32>( nodeVar# ), ( ( nodeVar# + 0u ) < 50u ) );
+	nodeVar# = nodeVar#;
+	nodeVar# = ( nodeVar# + 1u );
+	nodeVar# = select( unpack2x16float(nr_residual.value[ ( nodeVar# >> 1u ) ]).y, unpack2x16float(nr_residual.value[ ( nodeVar# >> 1u ) ]).x, ( ( nodeVar# & 1u ) == 0u ) );
+	nodeVar# = ( nodeVar# + 1u );
+	nodeVar# = select( unpack2x16float(nr_scale.value[ ( nodeVar# >> 1u ) ]).y, unpack2x16float(nr_scale.value[ ( nodeVar# >> 1u ) ]).x, ( ( nodeVar# & 1u ) == 0u ) );
+	nodeVar# = bitcast<u32>( nr_round_f16( ( nodeVar# * nodeVar# ) ) );
+	nodeVar# = select( nodeVar#, 0u, ( ( nodeVar# & 2147483647u ) == 0u ) );
+	nodeVar# = select( 0.0, bitcast<f32>( nodeVar# ), ( ( nodeVar# + 0u ) < 50u ) );
+	nodeVar# = nodeVar#;
+	nodeVar# = ( nodeVar# + 2u );
+	nodeVar# = select( unpack2x16float(nr_residual.value[ ( nodeVar# >> 1u ) ]).y, unpack2x16float(nr_residual.value[ ( nodeVar# >> 1u ) ]).x, ( ( nodeVar# & 1u ) == 0u ) );
+	nodeVar# = ( nodeVar# + 2u );
+	nodeVar# = select( unpack2x16float(nr_scale.value[ ( nodeVar# >> 1u ) ]).y, unpack2x16float(nr_scale.value[ ( nodeVar# >> 1u ) ]).x, ( ( nodeVar# & 1u ) == 0u ) );
+	nodeVar# = bitcast<u32>( nr_round_f16( ( nodeVar# * nodeVar# ) ) );
+	nodeVar# = select( nodeVar#, 0u, ( ( nodeVar# & 2147483647u ) == 0u ) );
+	nodeVar# = select( 0.0, bitcast<f32>( nodeVar# ), ( ( nodeVar# + 0u ) < 50u ) );
+	nodeVar# = nodeVar#;
+	nodeVar# = ( nodeVar# + 3u );
+	nodeVar# = select( unpack2x16float(nr_residual.value[ ( nodeVar# >> 1u ) ]).y, unpack2x16float(nr_residual.value[ ( nodeVar# >> 1u ) ]).x, ( ( nodeVar# & 1u ) == 0u ) );
+	nodeVar# = ( nodeVar# + 3u );
+	nodeVar# = select( unpack2x16float(nr_scale.value[ ( nodeVar# >> 1u ) ]).y, unpack2x16float(nr_scale.value[ ( nodeVar# >> 1u ) ]).x, ( ( nodeVar# & 1u ) == 0u ) );
+	nodeVar# = bitcast<u32>( nr_round_f16( ( nodeVar# * nodeVar# ) ) );
+	nodeVar# = select( nodeVar#, 0u, ( ( nodeVar# & 2147483647u ) == 0u ) );
+	nodeVar# = select( 0.0, bitcast<f32>( nodeVar# ), ( ( nodeVar# + 0u ) < 50u ) );
+	nodeVar# = nodeVar#;
+	nodeVar# = ( ( ( nodeVar# + 1u ) * 32u ) + nodeVar# );
+	nodeVar# = ( nodeVar# + 0u );
+	nodeVar# = select( unpack2x16float(nr_residual.value[ ( nodeVar# >> 1u ) ]).y, unpack2x16float(nr_residual.value[ ( nodeVar# >> 1u ) ]).x, ( ( nodeVar# & 1u ) == 0u ) );
+	nodeVar# = ( nodeVar# + 0u );
+	nodeVar# = select( unpack2x16float(nr_scale.value[ ( nodeVar# >> 1u ) ]).y, unpack2x16float(nr_scale.value[ ( nodeVar# >> 1u ) ]).x, ( ( nodeVar# & 1u ) == 0u ) );
+	nodeVar# = bitcast<u32>( nr_round_f16( ( nodeVar# * nodeVar# ) ) );
+	nodeVar# = select( nodeVar#, 0u, ( ( nodeVar# & 2147483647u ) == 0u ) );
+	nodeVar# = select( 0.0, bitcast<f32>( nodeVar# ), ( ( nodeVar# + 1u ) < 50u ) );
+	nodeVar# = nodeVar#;
+	nodeVar# = ( nodeVar# + 1u );
+	nodeVar# = select( unpack2x16float(nr_residual.value[ ( nodeVar# >> 1u ) ]).y, unpack2x16float(nr_residual.value[ ( nodeVar# >> 1u ) ]).x, ( ( nodeVar# & 1u ) == 0u ) );
+	nodeVar# = ( nodeVar# + 1u );
+	nodeVar# = select( unpack2x16float(nr_scale.value[ ( nodeVar# >> 1u ) ]).y, unpack2x16float(nr_scale.value[ ( nodeVar# >> 1u ) ]).x, ( ( nodeVar# & 1u ) == 0u ) );
+	nodeVar# = bitcast<u32>( nr_round_f16( ( nodeVar# * nodeVar# ) ) );
+	nodeVar# = select( nodeVar#, 0u, ( ( nodeVar# & 2147483647u ) == 0u ) );
+	nodeVar# = select( 0.0, bitcast<f32>( nodeVar# ), ( ( nodeVar# + 1u ) < 50u ) );
+	nodeVar# = nodeVar#;
+	nodeVar# = ( nodeVar# + 2u );
+	nodeVar# = select( unpack2x16float(nr_residual.value[ ( nodeVar# >> 1u ) ]).y, unpack2x16float(nr_residual.value[ ( nodeVar# >> 1u ) ]).x, ( ( nodeVar# & 1u ) == 0u ) );
+	nodeVar# = ( nodeVar# + 2u );
+	nodeVar# = select( unpack2x16float(nr_scale.value[ ( nodeVar# >> 1u ) ]).y, unpack2x16float(nr_scale.value[ ( nodeVar# >> 1u ) ]).x, ( ( nodeVar# & 1u ) == 0u ) );
+	nodeVar# = bitcast<u32>( nr_round_f16( ( nodeVar# * nodeVar# ) ) );
+	nodeVar# = select( nodeVar#, 0u, ( ( nodeVar# & 2147483647u ) == 0u ) );
+	nodeVar# = select( 0.0, bitcast<f32>( nodeVar# ), ( ( nodeVar# + 1u ) < 50u ) );
+	nodeVar# = nodeVar#;
+	nodeVar# = ( nodeVar# + 3u );
+	nodeVar# = select( unpack2x16float(nr_residual.value[ ( nodeVar# >> 1u ) ]).y, unpack2x16float(nr_residual.value[ ( nodeVar# >> 1u ) ]).x, ( ( nodeVar# & 1u ) == 0u ) );
+	nodeVar# = ( nodeVar# + 3u );
+	nodeVar# = select( unpack2x16float(nr_scale.value[ ( nodeVar# >> 1u ) ]).y, unpack2x16float(nr_scale.value[ ( nodeVar# >> 1u ) ]).x, ( ( nodeVar# & 1u ) == 0u ) );
+	nodeVar# = bitcast<u32>( nr_round_f16( ( nodeVar# * nodeVar# ) ) );
+	nodeVar# = select( nodeVar#, 0u, ( ( nodeVar# & 2147483647u ) == 0u ) );
+	nodeVar# = select( 0.0, bitcast<f32>( nodeVar# ), ( ( nodeVar# + 1u ) < 50u ) );
+	nodeVar# = nodeVar#;
+	nodeVar# = ( invocationLocalIndex + 0u );
+	nodeVar# = ( nodeVar# & 7u );
+	nodeVar# = ( ( nodeVar# * 32u ) + ( nodeVar# >> 3u ) );
+	nodeVar# = ( ( nodeVar# * 32u ) + ( nodeVar# >> 3u ) );
+	nodeVar# = ( ( ( nodeVar# * 128u ) + ( ( nodeVar# & 4u ) * 4u ) ) + ( ( nodeVar# & 3u ) * 2u ) );
+	nodeVar# = ( nodeVar# < 50u );
+	nodeVar# = ( ( workgroupId.x * 32u ) + ( nodeVar# >> 3u ) );
+	nodeVar# = ( nodeVar# & 127u );
+	nodeVar# = ( nodeVar# & 15u );
+	nodeVar# = ( nodeVar# * 4u );
+	nodeVar# = ( ( ( ( ( ( nodeVar# >> 7u ) * 4096u ) + ( ( nodeVar# >> 6u ) * 2048u ) ) + ( ( ( nodeVar# & 63u ) >> 4u ) * 512u ) ) + ( ( ( ( nodeVar# & 7u ) << 2u ) | ( ( nodeVar# & 15u ) >> 2u ) ) * 16u ) ) + ( ( ( nodeVar# >> 3u ) << 3u ) | ( ( nodeVar# >> 4u ) << 2u ) ) );
+	nodeVar# = ( invocationLocalIndex + 128u );
+	nodeVar# = ( nodeVar# & 7u );
+	nodeVar# = ( ( nodeVar# * 32u ) + ( nodeVar# >> 3u ) );
+	nodeVar# = ( ( nodeVar# * 32u ) + ( nodeVar# >> 3u ) );
+	nodeVar# = ( ( ( nodeVar# * 128u ) + ( ( nodeVar# & 4u ) * 4u ) ) + ( ( nodeVar# & 3u ) * 2u ) );
+	nodeVar# = ( nodeVar# < 50u );
+	nodeVar# = ( ( workgroupId.x * 32u ) + ( nodeVar# >> 3u ) );
+	nodeVar# = ( nodeVar# & 127u );
+	nodeVar# = ( nodeVar# & 15u );
+	nodeVar# = ( nodeVar# * 4u );
+	nodeVar# = ( ( ( ( ( ( nodeVar# >> 7u ) * 4096u ) + ( ( nodeVar# >> 6u ) * 2048u ) ) + ( ( ( nodeVar# & 63u ) >> 4u ) * 512u ) ) + ( ( ( ( nodeVar# & 7u ) << 2u ) | ( ( nodeVar# & 15u ) >> 2u ) ) * 16u ) ) + ( ( ( nodeVar# >> 3u ) << 3u ) | ( ( nodeVar# >> 4u ) << 2u ) ) );
+	nodeVar# = 0;
+	nodeVar# = 0;
+	nodeVar# = 0;
+	nodeVar# = 0;
+	nodeVar# = 0;
+	nodeVar# = 0;
+	nodeVar# = 0;
+	nodeVar# = 0;
+	nodeVar# = 1.0;
+	nodeVar# = 1.0;
+	nodeVar# = 1.0;
+	nodeVar# = 1.0;
+	nodeVar# = 1.0;
+	nodeVar# = 1.0;
+	nodeVar# = 1.0;
+	nodeVar# = 1.0;
+	nodeVar# = 0.0;
+	nodeVar# = 0.0;
+	nodeVar# = 0.0;
+	nodeVar# = 0.0;
+	nodeVar# = 0.0;
+	nodeVar# = 0.0;
+	nodeVar# = 0.0;
+	nodeVar# = 0.0;
+	nodeVar# = ( localId.y * 16u );
+	nodeVar# = ( localId.x * 4u );
+
+	for ( var kTile : u32 = 0u; kTile < 4u; kTile ++ ) {
+
+		nodeVar# = ( nodeVar# + ( kTile * 32u ) );
+		nodeVar# = ( ( nodeVar# & 3u ) * 8u );
+		nodeVar# = select( 0u, nr_input.value[ ( nodeVar# >> 2u ) ], nodeVar# );
+		nodeVar# = select( 0u, nr_input.value[ ( ( nodeVar# + 8u ) >> 2u ) ], nodeVar# );
+		nodeVar# = nr_operands.value[ ( ( nodeVar# >> nodeVar# ) & 255u ) ];
+		nodeVar# = nr_operands.value[ ( ( nodeVar# >> ( nodeVar# + 8u ) ) & 255u ) ];
+		nodeVar# = nr_operands.value[ ( ( nodeVar# >> nodeVar# ) & 255u ) ];
+		nodeVar# = nr_operands.value[ ( ( nodeVar# >> ( nodeVar# + 8u ) ) & 255u ) ];
+		nr_tile_a[ nodeVar# ] = vec4<f32>( bitcast<f32>( ( nodeVar# & 4293918720u ) ), bitcast<f32>( ( nodeVar# & 4293918720u ) ), bitcast<f32>( ( nodeVar# & 4293918720u ) ), bitcast<f32>( ( nodeVar# & 4293918720u ) ) );
+		nr_tile_ea[ nodeVar# ] = vec4<i32>( ( i32( ( nodeVar# & 255u ) ) - 128 ), ( i32( ( nodeVar# & 255u ) ) - 128 ), ( i32( ( nodeVar# & 255u ) ) - 128 ), ( i32( ( nodeVar# & 255u ) ) - 128 ) );
+		nodeVar# = nr_weights.value[ ( ( nodeVar# + ( kTile * 1024u ) ) >> 2u ) ];
+		nodeVar# = nr_operands.value[ ( ( nodeVar# >> 0u ) & 255u ) ];
+		nodeVar# = nr_operands.value[ ( ( nodeVar# >> 8u ) & 255u ) ];
+		nodeVar# = nr_operands.value[ ( ( nodeVar# >> 16u ) & 255u ) ];
+		nodeVar# = nr_operands.value[ ( ( nodeVar# >> 24u ) & 255u ) ];
+		nr_tile_b[ nodeVar# ] = vec4<f32>( bitcast<f32>( ( nodeVar# & 4293918720u ) ), bitcast<f32>( ( nodeVar# & 4293918720u ) ), bitcast<f32>( ( nodeVar# & 4293918720u ) ), bitcast<f32>( ( nodeVar# & 4293918720u ) ) );
+		nr_tile_eb[ nodeVar# ] = vec4<i32>( ( i32( ( nodeVar# & 255u ) ) - 128 ), ( i32( ( nodeVar# & 255u ) ) - 128 ), ( i32( ( nodeVar# & 255u ) ) - 128 ), ( i32( ( nodeVar# & 255u ) ) - 128 ) );
+		nodeVar# = ( nodeVar# + ( kTile * 32u ) );
+		nodeVar# = ( ( nodeVar# & 3u ) * 8u );
+		nodeVar# = select( 0u, nr_input.value[ ( nodeVar# >> 2u ) ], nodeVar# );
+		nodeVar# = select( 0u, nr_input.value[ ( ( nodeVar# + 8u ) >> 2u ) ], nodeVar# );
+		nodeVar# = nr_operands.value[ ( ( nodeVar# >> nodeVar# ) & 255u ) ];
+		nodeVar# = nr_operands.value[ ( ( nodeVar# >> ( nodeVar# + 8u ) ) & 255u ) ];
+		nodeVar# = nr_operands.value[ ( ( nodeVar# >> nodeVar# ) & 255u ) ];
+		nodeVar# = nr_operands.value[ ( ( nodeVar# >> ( nodeVar# + 8u ) ) & 255u ) ];
+		nr_tile_a[ nodeVar# ] = vec4<f32>( bitcast<f32>( ( nodeVar# & 4293918720u ) ), bitcast<f32>( ( nodeVar# & 4293918720u ) ), bitcast<f32>( ( nodeVar# & 4293918720u ) ), bitcast<f32>( ( nodeVar# & 4293918720u ) ) );
+		nr_tile_ea[ nodeVar# ] = vec4<i32>( ( i32( ( nodeVar# & 255u ) ) - 128 ), ( i32( ( nodeVar# & 255u ) ) - 128 ), ( i32( ( nodeVar# & 255u ) ) - 128 ), ( i32( ( nodeVar# & 255u ) ) - 128 ) );
+		nodeVar# = nr_weights.value[ ( ( nodeVar# + ( kTile * 1024u ) ) >> 2u ) ];
+		nodeVar# = nr_operands.value[ ( ( nodeVar# >> 0u ) & 255u ) ];
+		nodeVar# = nr_operands.value[ ( ( nodeVar# >> 8u ) & 255u ) ];
+		nodeVar# = nr_operands.value[ ( ( nodeVar# >> 16u ) & 255u ) ];
+		nodeVar# = nr_operands.value[ ( ( nodeVar# >> 24u ) & 255u ) ];
+		nr_tile_b[ nodeVar# ] = vec4<f32>( bitcast<f32>( ( nodeVar# & 4293918720u ) ), bitcast<f32>( ( nodeVar# & 4293918720u ) ), bitcast<f32>( ( nodeVar# & 4293918720u ) ), bitcast<f32>( ( nodeVar# & 4293918720u ) ) );
+		nr_tile_eb[ nodeVar# ] = vec4<i32>( ( i32( ( nodeVar# & 255u ) ) - 128 ), ( i32( ( nodeVar# & 255u ) ) - 128 ), ( i32( ( nodeVar# & 255u ) ) - 128 ), ( i32( ( nodeVar# & 255u ) ) - 128 ) );
+		workgroupBarrier();
+
+		for ( var half : u32 = 0u; half < 2u; half ++ ) {
+
+			nodeVar# = nr_gemm_accumulator_exponent( nodeVar# );
+			nodeVar# = nr_gemm_accumulator_exponent( nodeVar# );
+			nodeVar# = nr_gemm_accumulator_exponent( nodeVar# );
+			nodeVar# = nr_gemm_accumulator_exponent( nodeVar# );
+			nodeVar# = nr_gemm_accumulator_exponent( nodeVar# );
+			nodeVar# = nr_gemm_accumulator_exponent( nodeVar# );
+			nodeVar# = nr_gemm_accumulator_exponent( nodeVar# );
+			nodeVar# = nr_gemm_accumulator_exponent( nodeVar# );
+
+			for ( var quad : u32 = 0u; quad < 4u; quad ++ ) {
+
+				nodeVar# = ( ( half * 4u ) + quad );
+				nodeVar# = nr_tile_ea[ ( ( nodeVar# + 0u ) + nodeVar# ) ];
+				nodeVar# = nr_tile_ea[ ( ( nodeVar# + 8u ) + nodeVar# ) ];
+				nodeVar# = nr_tile_eb[ ( ( ( nodeVar# * 32u ) + nodeVar# ) + 0u ) ];
+				nodeVar# = nr_tile_eb[ ( ( ( nodeVar# * 32u ) + nodeVar# ) + 1u ) ];
+				nodeVar# = nr_tile_eb[ ( ( ( nodeVar# * 32u ) + nodeVar# ) + 2u ) ];
+				nodeVar# = nr_tile_eb[ ( ( ( nodeVar# * 32u ) + nodeVar# ) + 3u ) ];
+				nodeVar# = ( nodeVar# + nodeVar# );
+				nodeVar# = max( nodeVar#, max( max( nodeVar#.x, nodeVar#.y ), max( nodeVar#.z, nodeVar#.w ) ) );
+				nodeVar# = ( nodeVar# + nodeVar# );
+				nodeVar# = max( nodeVar#, max( max( nodeVar#.x, nodeVar#.y ), max( nodeVar#.z, nodeVar#.w ) ) );
+				nodeVar# = ( nodeVar# + nodeVar# );
+				nodeVar# = max( nodeVar#, max( max( nodeVar#.x, nodeVar#.y ), max( nodeVar#.z, nodeVar#.w ) ) );
+				nodeVar# = ( nodeVar# + nodeVar# );
+				nodeVar# = max( nodeVar#, max( max( nodeVar#.x, nodeVar#.y ), max( nodeVar#.z, nodeVar#.w ) ) );
+				nodeVar# = ( nodeVar# + nodeVar# );
+				nodeVar# = max( nodeVar#, max( max( nodeVar#.x, nodeVar#.y ), max( nodeVar#.z, nodeVar#.w ) ) );
+				nodeVar# = ( nodeVar# + nodeVar# );
+				nodeVar# = max( nodeVar#, max( max( nodeVar#.x, nodeVar#.y ), max( nodeVar#.z, nodeVar#.w ) ) );
+				nodeVar# = ( nodeVar# + nodeVar# );
+				nodeVar# = max( nodeVar#, max( max( nodeVar#.x, nodeVar#.y ), max( nodeVar#.z, nodeVar#.w ) ) );
+				nodeVar# = ( nodeVar# + nodeVar# );
+				nodeVar# = max( nodeVar#, max( max( nodeVar#.x, nodeVar#.y ), max( nodeVar#.z, nodeVar#.w ) ) );
+
+			}
+
+			nodeVar# = nr_pow2( ( 13 - nodeVar# ) );
+			nodeVar# = trunc( ( nodeVar# * nodeVar# ) );
+			nodeVar# = nr_pow2( ( 13 - nodeVar# ) );
+			nodeVar# = trunc( ( nodeVar# * nodeVar# ) );
+			nodeVar# = nr_pow2( ( 13 - nodeVar# ) );
+			nodeVar# = trunc( ( nodeVar# * nodeVar# ) );
+			nodeVar# = nr_pow2( ( 13 - nodeVar# ) );
+			nodeVar# = trunc( ( nodeVar# * nodeVar# ) );
+			nodeVar# = nr_pow2( ( 13 - nodeVar# ) );
+			nodeVar# = trunc( ( nodeVar# * nodeVar# ) );
+			nodeVar# = nr_pow2( ( 13 - nodeVar# ) );
+			nodeVar# = trunc( ( nodeVar# * nodeVar# ) );
+			nodeVar# = nr_pow2( ( 13 - nodeVar# ) );
+			nodeVar# = trunc( ( nodeVar# * nodeVar# ) );
+			nodeVar# = nr_pow2( ( 13 - nodeVar# ) );
+			nodeVar# = trunc( ( nodeVar# * nodeVar# ) );
+
+			for ( var quad : u32 = 0u; quad < 4u; quad ++ ) {
+
+				nodeVar# = ( ( half * 4u ) + quad );
+				nodeVar# = nr_tile_a[ ( ( nodeVar# + 0u ) + nodeVar# ) ];
+				nodeVar# = nr_tile_a[ ( ( nodeVar# + 8u ) + nodeVar# ) ];
+				nodeVar# = nr_tile_b[ ( ( ( nodeVar# * 32u ) + nodeVar# ) + 0u ) ];
+				nodeVar# = nr_tile_b[ ( ( ( nodeVar# * 32u ) + nodeVar# ) + 1u ) ];
+				nodeVar# = nr_tile_b[ ( ( ( nodeVar# * 32u ) + nodeVar# ) + 2u ) ];
+				nodeVar# = nr_tile_b[ ( ( ( nodeVar# * 32u ) + nodeVar# ) + 3u ) ];
+				nodeVar# = trunc( ( ( nodeVar# * nodeVar# ) * vec4<f32>( nodeVar# ) ) );
+				nodeVar# = ( nodeVar# + ( ( nodeVar#.x + nodeVar#.y ) + ( nodeVar#.z + nodeVar#.w ) ) );
+				nodeVar# = trunc( ( ( nodeVar# * nodeVar# ) * vec4<f32>( nodeVar# ) ) );
+				nodeVar# = ( nodeVar# + ( ( nodeVar#.x + nodeVar#.y ) + ( nodeVar#.z + nodeVar#.w ) ) );
+				nodeVar# = trunc( ( ( nodeVar# * nodeVar# ) * vec4<f32>( nodeVar# ) ) );
+				nodeVar# = ( nodeVar# + ( ( nodeVar#.x + nodeVar#.y ) + ( nodeVar#.z + nodeVar#.w ) ) );
+				nodeVar# = trunc( ( ( nodeVar# * nodeVar# ) * vec4<f32>( nodeVar# ) ) );
+				nodeVar# = ( nodeVar# + ( ( nodeVar#.x + nodeVar#.y ) + ( nodeVar#.z + nodeVar#.w ) ) );
+				nodeVar# = trunc( ( ( nodeVar# * nodeVar# ) * vec4<f32>( nodeVar# ) ) );
+				nodeVar# = ( nodeVar# + ( ( nodeVar#.x + nodeVar#.y ) + ( nodeVar#.z + nodeVar#.w ) ) );
+				nodeVar# = trunc( ( ( nodeVar# * nodeVar# ) * vec4<f32>( nodeVar# ) ) );
+				nodeVar# = ( nodeVar# + ( ( nodeVar#.x + nodeVar#.y ) + ( nodeVar#.z + nodeVar#.w ) ) );
+				nodeVar# = trunc( ( ( nodeVar# * nodeVar# ) * vec4<f32>( nodeVar# ) ) );
+				nodeVar# = ( nodeVar# + ( ( nodeVar#.x + nodeVar#.y ) + ( nodeVar#.z + nodeVar#.w ) ) );
+				nodeVar# = trunc( ( ( nodeVar# * nodeVar# ) * vec4<f32>( nodeVar# ) ) );
+				nodeVar# = ( nodeVar# + ( ( nodeVar#.x + nodeVar#.y ) + ( nodeVar#.z + nodeVar#.w ) ) );
+
+			}
+
+			nodeVar# = nr_gemm_group_finish( nodeVar#, nodeVar# );
+			nodeVar# = nr_gemm_group_finish( nodeVar#, nodeVar# );
+			nodeVar# = nr_gemm_group_finish( nodeVar#, nodeVar# );
+			nodeVar# = nr_gemm_group_finish( nodeVar#, nodeVar# );
+			nodeVar# = nr_gemm_group_finish( nodeVar#, nodeVar# );
+			nodeVar# = nr_gemm_group_finish( nodeVar#, nodeVar# );
+			nodeVar# = nr_gemm_group_finish( nodeVar#, nodeVar# );
+			nodeVar# = nr_gemm_group_finish( nodeVar#, nodeVar# );
+
+		}
+
+		workgroupBarrier();
+
+	}
+
+	nodeVar# = ( ( ( nodeVar# + 0u ) * 32u ) + nodeVar# );
+
+	if ( ( ( nodeVar# + 0u ) < 50u ) ) {
+
+		nr_output.value[ ( nodeVar# >> 2u ) ] = ( ( ( nr_publish_e4_code_gemm( nodeVar# ) | ( nr_publish_e4_code_gemm( nodeVar# ) << 8u ) ) | ( nr_publish_e4_code_gemm( nodeVar# ) << 16u ) ) | ( nr_publish_e4_code_gemm( nodeVar# ) << 24u ) );
+		nodeVar# = nr_f16_bits( nodeVar# );
+		nodeVar# = nr_f16_bits( nodeVar# );
+		nodeVar# = nr_f16_bits( nodeVar# );
+		nodeVar# = nr_f16_bits( nodeVar# );
+		nodeVar# = ( nodeVar# >> 1u );
+		nr_outputHalf.value[ nodeVar# ] = ( nodeVar# | ( nodeVar# << 16u ) );
+		nr_outputHalf.value[ ( nodeVar# + 1u ) ] = ( nodeVar# | ( nodeVar# << 16u ) );
+
+	}
+
+	nodeVar# = ( ( ( nodeVar# + 1u ) * 32u ) + nodeVar# );
+
+	if ( ( ( nodeVar# + 1u ) < 50u ) ) {
+
+		nr_output.value[ ( nodeVar# >> 2u ) ] = ( ( ( nr_publish_e4_code_gemm( nodeVar# ) | ( nr_publish_e4_code_gemm( nodeVar# ) << 8u ) ) | ( nr_publish_e4_code_gemm( nodeVar# ) << 16u ) ) | ( nr_publish_e4_code_gemm( nodeVar# ) << 24u ) );
+		nodeVar# = nr_f16_bits( nodeVar# );
+		nodeVar# = nr_f16_bits( nodeVar# );
+		nodeVar# = nr_f16_bits( nodeVar# );
+		nodeVar# = nr_f16_bits( nodeVar# );
+		nodeVar# = ( nodeVar# >> 1u );
+		nr_outputHalf.value[ nodeVar# ] = ( nodeVar# | ( nodeVar# << 16u ) );
+		nr_outputHalf.value[ ( nodeVar# + 1u ) ] = ( nodeVar# | ( nodeVar# << 16u ) );
+
+	}
+
+}
+"
+`;
