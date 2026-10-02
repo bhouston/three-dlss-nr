@@ -31,3 +31,11 @@ Upstream NOTICE (OpenDLSS-NR, commit 9d08f41), carried forward:
 None of the upstream third-party build components listed above are used or redistributed by three-dlss-nr.
 The upstream repository is included only as a git submodule (reference/OpenDLSS-NR) for parity testing and is
 not part of the published three-dlss-nr package.
+
+Demo assets redistributed in packages/website/public/models/ (not part of the published npm package):
+
+- "Infinite, 3D Head Scan" by Lee Perry-Smith (Infinite-Realities), licensed under Creative Commons
+  Attribution 3.0 Unported (https://creativecommons.org/licenses/by/3.0/). Based on a work at
+  www.triplegangers.com. glTF and maps via the three.js examples (examples/models/gltf/LeePerrySmith).
+  Files: packages/website/public/models/lee-perry-smith/ (see ATTRIBUTION.txt there). The demo displays
+  this attribution and shows the head re-rendered by the network.
