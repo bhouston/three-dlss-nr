@@ -155,7 +155,7 @@ async function parity(options: Options) {
       throw new Error(`tensor names differ:\n${[...theirs.keys()].join()}\n${[...mine.keys()].join()}`);
     }
     const results = [...mine].map(([name, bytes]) => verdict(name, bytes, theirs.get(name)!));
-    const stats = [...theirs]
+    const boundaryStats = [...theirs]
       .filter(([name]) => name !== 'head' && !(POST_TENSORS as readonly string[]).includes(name))
       .map(([name, bytes]) => e4Stats(name, bytes));
     const head = new Float32Array(theirs.get('head')!.buffer);
@@ -180,7 +180,7 @@ async function parity(options: Options) {
       results,
       repeat,
       finiteHead,
-      stats,
+      stats: boundaryStats,
       digest,
     };
   } finally {
@@ -204,6 +204,33 @@ function truncateReference(cut: number) {
     }
     passes.length = end;
   };
+}
+
+/** The reference alone (no TSL compile): its boundary statistics, for calibrating the synthetic weights quickly. */
+async function stats({ modelUrl, shaderBase, width, height }: Options) {
+  const { device } = await createNRDevice();
+  try {
+    const referenceModel = await new Model(device).load(modelUrl.replace(/\/+$/, ''));
+    const reference = await Network.create({
+      device,
+      model: referenceModel,
+      width,
+      height,
+      captureBoundaries: true,
+      shaderBase: new URL(shaderBase, location.href),
+    });
+    reference.writeFeatures(syntheticFeatures(reference.geometry));
+    await reference.run();
+    const result: BoundaryStats[] = [];
+    for (const name of reference.boundaryNames as string[])
+      result.push(e4Stats(name, await reference.readBoundary(name)));
+    const head = (await reference.readHead()) as Float32Array;
+    reference.destroy();
+    referenceModel.destroy();
+    return { stats: result, finiteHead: head.every(Number.isFinite) };
+  } finally {
+    device.destroy();
+  }
 }
 
 async function bisect(options: Options & { until: number }) {
@@ -244,4 +271,8 @@ function failOnDeviceLoss<A extends unknown[], R>(run: (...args: A) => Promise<R
     });
 }
 
-(globalThis as any).nrNetworkParity = { parity: failOnDeviceLoss(parity), bisect: failOnDeviceLoss(bisect) };
+(globalThis as any).nrNetworkParity = {
+  parity: failOnDeviceLoss(parity),
+  bisect: failOnDeviceLoss(bisect),
+  stats: failOnDeviceLoss(stats),
+};

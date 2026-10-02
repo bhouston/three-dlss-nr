@@ -25,8 +25,16 @@ export const SYNTHETIC_ZERO_THRESHOLD = 171798692;
 
 /** Half-open uniform ranges `[low, high)` of the scalar parameters. */
 export const SYNTHETIC_RANGES = {
-  /** Every per-channel f16 skip / transition / post-blend scale. */
-  skipScale: [0.5, 0.95],
+  /**
+   * Every per-channel f16 skip / transition / post-blend scale outside the ViT. Calibrated in real Chrome against the
+   * reference (run-network-parity-chrome.mjs --stats-only): [0.5, 0.95] collapsed the encoder to the E4 subnormals by
+   * block 30, [0.85, 1.0] saturated from block 20 on; the residual stream's gain per block is steep in the mean scale.
+   */
+  skipScale: [0.7, 0.9],
+  /** The ViT's (blocks 31-38) skip scales: its global attention grows the stream faster, more so with more tokens. */
+  vitSkipScale: [0.6, 0.8],
+  /** The decoder's window blocks (48-70), whose stream also takes the encoder skips at every upsample. */
+  decoderSkipScale: [0.65, 0.85],
   /** Window attention per-head f32 scale. */
   windowScale: [2, 6],
   /** ViT learned per-head f32 scale (times sqrt(32) in the kernel). */
