@@ -1,7 +1,5 @@
 # three-dlss-nr
 
-[![npm version](https://img.shields.io/npm/v/three-dlss-nr.svg)](https://www.npmjs.com/package/three-dlss-nr)
-[![npm downloads](https://img.shields.io/npm/dm/three-dlss-nr.svg)](https://www.npmjs.com/package/three-dlss-nr)
 [![ci](https://github.com/bhouston/three-dlss-nr/actions/workflows/ci.yml/badge.svg)](https://github.com/bhouston/three-dlss-nr/actions/workflows/ci.yml)
 [![Unit coverage](https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2Fbhouston%2Fthree-dlss-nr%2Fcoverage-badge%2Fcoverage.json)](https://github.com/bhouston/three-dlss-nr/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/bhouston/three-dlss-nr/blob/main/LICENSE)
