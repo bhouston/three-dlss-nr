@@ -1,0 +1,12 @@
+Fox
+PixelMannen — Model; Creative Commons Zero v1.0 Universal (https://creativecommons.org/publicdomain/zero/1.0/legalcode)
+tomkranis — Rigging & Animation; Creative Commons Attribution 4.0 International (https://creativecommons.org/licenses/by/4.0/legalcode)
+@AsoboStudio and @scurest — Conversion to glTF; Creative Commons Attribution 4.0 International (https://creativecommons.org/licenses/by/4.0/legalcode)
+
+Source: https://github.com/KhronosGroup/glTF-Sample-Assets/tree/edc7c9e67c639d230715049ee31f9a96a6babbbe/Models/Fox
+Local modifications:
+Packed into a self-contained GLB with glTF Transform 4.5.1.
+Deduplicated accessors, meshes, materials and textures; pruned unused data.
+PNG/JPEG texture dimensions capped at 1024 pixels, preserving aspect ratios; lossless WebP encoding. Existing WebP textures preserved.
+No mesh simplification, geometry quantization, or required external decoder.
+The viewer centres/scales the scene; displayed NR-on frames are neurally re-rendered.

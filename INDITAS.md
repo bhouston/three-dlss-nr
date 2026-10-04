@@ -2,7 +2,8 @@
 
 A GitHub-projekt és a rögzített OpenDLSS-NR alprojekt telepítve van a
 `D:\AI\three-dlss-nr` mappában. A demó a helyi RTX 3090-en, a böngésző WebGPU
-felületén fut. A 3D fejmodell és a textúrák is helyben vannak.
+felületén fut. A fej, a sportautó, a kanapé, a róka és a pilótasisak textúráikkal
+együtt helyben vannak. A modelleket a [JELENETEK.md](JELENETEK.md) mutatja be.
 
 ## Indítás
 
@@ -16,7 +17,8 @@ cd D:\AI\three-dlss-nr
 Cím: <http://localhost:3300/local-demo.html>. Az indító Chrome-ban (vagy Edge-ben)
 nyitja meg az oldalt, a szerver pedig a terminálban fut. A helyi betanított modell
 automatikusan betöltődik, és az osztott nézet indul el 640 × 360-as méreten,
-Natural stílussal, a gépen gyorsabb **Reference WGSL** backenddel.
+Natural stílussal, a gépen gyorsabb **Reference WGSL** backenddel. A sportautó
+jelenik meg álló kamerával; a **Scene → Model / scene** mezőben válthatsz modellt.
 Az első shaderfordítás több tíz másodpercet igénybe vehet.
 Újraindításkor felismeri a már futó saját szervert. Más program által használt
 portot nem foglal el és más programot nem állít le.
@@ -40,7 +42,9 @@ Másik port használata:
 4. A **Backend** részen válthatsz a TSL és Reference WGSL megvalósítás között.
    Alapértelmezés a Reference WGSL. Az optimalizált TSL közvetlen címe:
    <http://localhost:3300/local-demo.html?backend=tsl>.
-5. A **Scene → Resolution** mezőben emelheted a felbontást. Ez a WebGPU-port
+5. A **Scene → Model / scene** választóban öt modell van. Mindegyik saját
+   kezdő kameranézetet kap; ehhez a **Reset camera** gombbal térhetsz vissza.
+6. A **Scene → Resolution** mezőben emelheted a felbontást. Ez a WebGPU-port
    jelenleg nem ad játékokra jellemző 60 fps-es neurális feldolgozást.
 
 A betanított modell a Visual Enhancer v14.0 kiadásának

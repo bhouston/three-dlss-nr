@@ -1,0 +1,28 @@
+{
+  "id": "car-concept",
+  "repository": "https://github.com/KhronosGroup/glTF-Sample-Assets",
+  "revision": "edc7c9e67c639d230715049ee31f9a96a6babbbe",
+  "source": "https://github.com/KhronosGroup/glTF-Sample-Assets/tree/edc7c9e67c639d230715049ee31f9a96a6babbbe/Models/CarConcept",
+  "output": "scene.glb",
+  "sha256": "3b432c9df74211b322cd58aa97f60304545e4129ae8b0398224cb670233bc5c1",
+  "byteLength": 10049624,
+  "transformations": [
+    "Packed into a self-contained GLB with glTF Transform 4.5.1.",
+    "Deduplicated accessors, meshes, materials and textures; pruned unused data.",
+    "PNG/JPEG texture dimensions capped at 1024 pixels, preserving aspect ratios; lossless WebP encoding. Existing WebP textures preserved.",
+    "No mesh simplification, geometry quantization, or required external decoder."
+  ],
+  "bounds": {
+    "min": [-1.2714082958559834, -0.00024107342268636645, -1.940231204032898],
+    "max": [1.2709126970853442, 1.1486550569534302, 2.4171547889709473]
+  },
+  "sourceBytes": 11778688,
+  "statistics": {
+    "nodes": 101,
+    "meshes": 97,
+    "materials": 29,
+    "textures": 14,
+    "animations": 0,
+    "renderVertexCount": 640041
+  }
+}

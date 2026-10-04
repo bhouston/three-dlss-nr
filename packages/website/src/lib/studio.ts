@@ -1,4 +1,4 @@
-// The demo's studio: a dark backdrop, a key / fill / rim light rig plus a soft room environment, and the head models
+// The demo's studio: a dark backdrop, a key / fill / rim light rig plus a soft room environment, and the models
 // of the registry loaded into it.
 
 import * as THREE from 'three/webgpu';
@@ -6,16 +6,16 @@ import { texture as textureNode } from 'three/tsl';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 
-import type { HeadModel } from './models';
+import type { DemoModel } from './models';
 
 export interface Studio {
   scene: any;
-  /** The group the current head lives in. */
+  /** The group the current model lives in. */
   stage: any;
   dispose(): void;
 }
 
-/** Background, lights and environment (no head yet). */
+/** Background, lights and environment (no model yet). */
 export function createStudio(renderer: any): Studio {
   const scene = new THREE.Scene();
   scene.background = new THREE.Color(0x14161b);
@@ -39,7 +39,7 @@ export function createStudio(renderer: any): Studio {
   scene.add(key, fill, rim, rimLeft);
 
   const stage = new THREE.Group();
-  stage.name = 'head stage';
+  stage.name = 'model stage';
   scene.add(stage);
 
   return {
@@ -53,13 +53,13 @@ export function createStudio(renderer: any): Studio {
   };
 }
 
-export interface LoadedHead {
+export interface LoadedModel {
   object: any;
   dispose(): void;
 }
 
-/** Load a registry entry: the glTF scene, its maps, a skin material, scaled and centred at the origin. */
-export async function loadHead(entry: HeadModel): Promise<LoadedHead> {
+/** Load a registry entry, preserving embedded PBR materials and fitting it to the studio. */
+export async function loadModel(entry: DemoModel): Promise<LoadedModel> {
   const hints = entry.loader ?? {};
   const base = entry.url.slice(0, entry.url.lastIndexOf('/') + 1);
   const textureLoader = new THREE.TextureLoader();
@@ -79,7 +79,24 @@ export async function loadHead(entry: HeadModel): Promise<LoadedHead> {
   ]);
   const root = gltf.scenes[hints.sceneIndex ?? 0] ?? gltf.scene;
 
-  const materials: any[] = [];
+  const geometries = new Set<any>();
+  const materials = new Set<any>();
+  const textures = new Set<any>([map, normalMap, specularMap].filter(Boolean));
+  const collectMaterial = (material: any) => {
+    materials.add(material);
+    for (const value of Object.values(material) as any[]) if (value?.isTexture) textures.add(value);
+  };
+  // Include shared resources and unused glTF scenes. A model switch releases each
+  // geometry, material and embedded texture once, including multi-material meshes.
+  for (const scene of gltf.scenes) {
+    scene.traverse((child: any) => {
+      if (!child.isMesh) return;
+      geometries.add(child.geometry);
+      for (const material of Array.isArray(child.material) ? child.material : [child.material]) {
+        collectMaterial(material);
+      }
+    });
+  }
   if (hints.textures) {
     const material = new THREE.MeshPhysicalNodeMaterial({
       color: 0xffffff,
@@ -93,7 +110,7 @@ export async function loadHead(entry: HeadModel): Promise<LoadedHead> {
     material.sheen = 0.15;
     material.sheenRoughness = 0.6;
     material.sheenColor = new THREE.Color(0.9, 0.7, 0.6);
-    materials.push(material);
+    collectMaterial(material);
     root.traverse((child: any) => {
       if (child.isMesh) child.material = material;
     });
@@ -102,7 +119,9 @@ export async function loadHead(entry: HeadModel): Promise<LoadedHead> {
   const box = new THREE.Box3().setFromObject(root);
   const size = box.getSize(new THREE.Vector3());
   const centre = box.getCenter(new THREE.Vector3());
-  const scale = (hints.height ?? 2) / Math.max(size.y, 1e-6);
+  const scale = hints.maxSize
+    ? hints.maxSize / Math.max(size.x, size.y, size.z, 1e-6)
+    : (hints.height ?? 2) / Math.max(size.y, 1e-6);
   const object = new THREE.Group();
   object.name = entry.id;
   root.position.sub(centre);
@@ -113,14 +132,14 @@ export async function loadHead(entry: HeadModel): Promise<LoadedHead> {
   return {
     object,
     dispose() {
-      root.traverse((child: any) => {
-        if (child.isMesh) {
-          child.geometry.dispose();
-          if (!materials.includes(child.material)) child.material.dispose?.();
-        }
-      });
+      for (const geometry of geometries) geometry.dispose();
       for (const material of materials) material.dispose();
-      for (const texture of [map, normalMap, specularMap]) texture?.dispose();
+      const images = new Set<any>();
+      for (const texture of textures) {
+        texture.dispose();
+        if (texture.image) images.add(texture.image);
+      }
+      for (const image of images) image.close?.();
     },
   };
 }

@@ -1,0 +1,28 @@
+{
+  "id": "leather-sofa",
+  "repository": "https://github.com/KhronosGroup/glTF-Sample-Assets",
+  "revision": "edc7c9e67c639d230715049ee31f9a96a6babbbe",
+  "source": "https://github.com/KhronosGroup/glTF-Sample-Assets/tree/edc7c9e67c639d230715049ee31f9a96a6babbbe/Models/SheenWoodLeatherSofa",
+  "output": "scene.glb",
+  "sha256": "8c0887662be4fecbfcb53a8e295ba7cc2cd1f925af2f7a0e69355a15dabeb68b",
+  "byteLength": 10105264,
+  "transformations": [
+    "Packed into a self-contained GLB with glTF Transform 4.5.1.",
+    "Deduplicated accessors, meshes, materials and textures; pruned unused data.",
+    "PNG/JPEG texture dimensions capped at 1024 pixels, preserving aspect ratios; lossless WebP encoding. Existing WebP textures preserved.",
+    "No mesh simplification, geometry quantization, or required external decoder."
+  ],
+  "bounds": {
+    "min": [-1.362902283668518, 0.0006284122324127028, -0.46269766544433977],
+    "max": [1.362902283668518, 1.117932354663326, 0.4604851256100495]
+  },
+  "sourceBytes": 10107912,
+  "statistics": {
+    "nodes": 6,
+    "meshes": 6,
+    "materials": 6,
+    "textures": 13,
+    "animations": 0,
+    "renderVertexCount": 139476
+  }
+}

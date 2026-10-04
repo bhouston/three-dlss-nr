@@ -1,0 +1,28 @@
+{
+  "id": "flight-helmet",
+  "repository": "https://github.com/KhronosGroup/glTF-Sample-Assets",
+  "revision": "edc7c9e67c639d230715049ee31f9a96a6babbbe",
+  "source": "https://github.com/KhronosGroup/glTF-Sample-Assets/tree/edc7c9e67c639d230715049ee31f9a96a6babbbe/Models/FlightHelmet",
+  "output": "scene.glb",
+  "sha256": "90ca0f7e6526729c65ed4d8aae1910d2530def734f6e6e1dc5d6e0537a77e9e6",
+  "byteLength": 14269776,
+  "transformations": [
+    "Packed into a self-contained GLB with glTF Transform 4.5.1.",
+    "Deduplicated accessors, meshes, materials and textures; pruned unused data.",
+    "PNG/JPEG texture dimensions capped at 1024 pixels, preserving aspect ratios; lossless WebP encoding. Existing WebP textures preserved.",
+    "No mesh simplification, geometry quantization, or required external decoder."
+  ],
+  "bounds": {
+    "min": [-0.20364271104335785, -2.142429366358556e-5, -0.17154578864574432],
+    "max": [0.1629406362771988, 0.7160004377365112, 0.2000291645526886]
+  },
+  "sourceBytes": 48392569,
+  "statistics": {
+    "nodes": 6,
+    "meshes": 6,
+    "materials": 6,
+    "textures": 15,
+    "animations": 0,
+    "renderVertexCount": 284166
+  }
+}

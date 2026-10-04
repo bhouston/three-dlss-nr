@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
 
 import type { DemoController, DemoState, FrameMode } from '@/lib/demo';
-import { HEAD_MODELS, headModel } from '@/lib/models';
+import { DEMO_MODELS, demoModel } from '@/lib/models';
 import { UPSTREAM_URL } from '@/lib/links';
 
 const RESOLUTION_OPTIONS = [
@@ -67,7 +67,7 @@ export function DemoApp() {
             <p className="absolute inset-0 grid place-items-center text-sm text-white/70">Loading…</p>
           ) : null}
         </div>
-        <HeadCredit modelId={state?.modelId ?? HEAD_MODELS[0].id} />
+        <ModelCredit modelId={state?.modelId ?? DEMO_MODELS[0].id} />
         {state ? <StatusBar state={state} /> : null}
       </div>
       <aside className="flex flex-col gap-4 text-sm">
@@ -113,7 +113,7 @@ function ViewportOverlay({ state, controller }: { state: DemoState; controller: 
       {building ? <BuildProgress state={state} /> : null}
       {state.modelLoading ? (
         <div className="pointer-events-none absolute right-2 bottom-2 text-xs">
-          <Badge>loading head…</Badge>
+          <Badge>loading model…</Badge>
         </div>
       ) : null}
     </>
@@ -192,18 +192,18 @@ function BuildProgress({ state }: { state: DemoState }) {
   );
 }
 
-function HeadCredit({ modelId }: { modelId: string }) {
-  const { attribution: a } = headModel(modelId);
+function ModelCredit({ modelId }: { modelId: string }) {
+  const { attribution: a } = demoModel(modelId);
   return (
     <p className="text-xs text-muted-foreground">
-      Head: <Link href={a.titleUrl}>&ldquo;{a.title}&rdquo;</Link> by <Link href={a.authorUrl}>{a.author}</Link>,
+      Model: <Link href={a.titleUrl}>&ldquo;{a.title}&rdquo;</Link> by <Link href={a.authorUrl}>{a.author}</Link>,
       licensed under <Link href={a.licenseUrl}>{a.license}</Link>
       {a.source ? (
         <>
           . <Link href={a.sourceUrl}>{a.source}</Link>
         </>
       ) : null}
-      .
+      .{a.modifications ? ` ${a.modifications}` : null}
     </p>
   );
 }
@@ -350,6 +350,61 @@ function Controls({ state, controller }: { state: DemoState; controller: DemoCon
             generate synthetic weights to see the pipeline run.
           </p>
         ) : null}
+      </Section>
+
+      <Section title="Scene">
+        <label className="grid grid-cols-[110px_1fr] items-center gap-2 text-xs">
+          <span>Model / scene</span>
+          <select
+            className="rounded border border-border bg-background px-1 py-0.5"
+            value={state.modelId}
+            disabled={state.modelLoading}
+            onChange={(e) => void controller.setModel(e.target.value)}
+          >
+            {DEMO_MODELS.map((model) => (
+              <option key={model.id} value={model.id}>
+                {model.label}
+              </option>
+            ))}
+          </select>
+        </label>
+        {state.modelError ? (
+          <p role="alert" className="text-xs text-red-500">
+            {state.modelError}
+          </p>
+        ) : null}
+        <label className="grid grid-cols-[110px_1fr] items-center gap-2 text-xs">
+          <span>Resolution</span>
+          <select
+            className="rounded border border-border bg-background px-1 py-0.5"
+            value={`${state.resolution.width}x${state.resolution.height}`}
+            onChange={(e) => {
+              const [width, height] = e.target.value.split('x').map(Number);
+              void controller.setResolution({ width, height });
+            }}
+          >
+            {RESOLUTION_OPTIONS.map((r) => (
+              <option key={`${r.width}x${r.height}`} value={`${r.width}x${r.height}`}>
+                {r.width} x {r.height}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="flex items-center gap-2 text-xs">
+          <input
+            type="checkbox"
+            checked={state.autoRotate}
+            onChange={(e) => controller.setAutoRotate(e.target.checked)}
+          />
+          Slow auto-rotate
+        </label>
+        <button
+          type="button"
+          className="self-start rounded border border-border px-2 py-1 text-xs hover:bg-muted"
+          onClick={() => controller.resetCamera()}
+        >
+          Reset camera
+        </button>
       </Section>
 
       <Section title="Weights">
@@ -532,55 +587,6 @@ function Controls({ state, controller }: { state: DemoState; controller: DemoCon
           onClick={() => controller.resetHistory()}
         >
           Reset history
-        </button>
-      </Section>
-
-      <Section title="Scene">
-        <label className="grid grid-cols-[110px_1fr] items-center gap-2 text-xs">
-          <span>Head</span>
-          <select
-            className="rounded border border-border bg-background px-1 py-0.5"
-            value={state.modelId}
-            onChange={(e) => void controller.setModel(e.target.value)}
-          >
-            {HEAD_MODELS.map((model) => (
-              <option key={model.id} value={model.id}>
-                {model.label}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="grid grid-cols-[110px_1fr] items-center gap-2 text-xs">
-          <span>Resolution</span>
-          <select
-            className="rounded border border-border bg-background px-1 py-0.5"
-            value={`${state.resolution.width}x${state.resolution.height}`}
-            onChange={(e) => {
-              const [width, height] = e.target.value.split('x').map(Number);
-              void controller.setResolution({ width, height });
-            }}
-          >
-            {RESOLUTION_OPTIONS.map((r) => (
-              <option key={`${r.width}x${r.height}`} value={`${r.width}x${r.height}`}>
-                {r.width} x {r.height}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="flex items-center gap-2 text-xs">
-          <input
-            type="checkbox"
-            checked={state.autoRotate}
-            onChange={(e) => controller.setAutoRotate(e.target.checked)}
-          />
-          Slow auto-rotate
-        </label>
-        <button
-          type="button"
-          className="self-start rounded border border-border px-2 py-1 text-xs hover:bg-muted"
-          onClick={() => controller.resetCamera()}
-        >
-          Reset camera
         </button>
       </Section>
 

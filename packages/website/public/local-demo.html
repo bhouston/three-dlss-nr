@@ -78,7 +78,11 @@
 
           await controller.setResolution({ width: 640, height: 360 });
           controller.setSettings({ style: 2 });
-          const requestedBackend = new URLSearchParams(location.search).get('backend');
+          const parameters = new URLSearchParams(location.search);
+          await controller.setModel(parameters.get('scene') || 'car-concept');
+          if (controller.getState().modelError) throw new Error(controller.getState().modelError);
+          controller.setAutoRotate(false);
+          const requestedBackend = parameters.get('backend');
           const backends = controller.getState().backends;
           const preferred = requestedBackend || 'reference-wgsl';
           if (backends.some((backend) => backend.id === preferred && !backend.reason)) {

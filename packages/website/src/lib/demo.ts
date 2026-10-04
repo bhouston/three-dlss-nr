@@ -1,4 +1,4 @@
-// The demo, outside React: the WebGPU device and renderer, the studio and head, the NR pass with a switchable backend,
+// The demo, outside React: the WebGPU device and renderer, the studio and model, the NR pass with a switchable backend,
 // and the state the UI renders (subscribe / getState, for useSyncExternalStore).
 
 import * as THREE from 'three/webgpu';
@@ -14,8 +14,8 @@ import type {
   NRBackendId,
 } from 'three-dlss-nr';
 
-import { DEFAULT_MODEL_ID, headModel } from './models';
-import { createStudio, loadHead, type LoadedHead, type Studio } from './studio';
+import { DEFAULT_MODEL_ID, demoModel } from './models';
+import { createStudio, loadModel, type LoadedModel, type Studio } from './studio';
 import { readModelDirectory, syntheticWeights, type WeightsSource } from './weights';
 
 export type FrameMode = 'shared' | 'reference';
@@ -77,6 +77,7 @@ export interface DemoState {
   resolution: Resolution;
   modelId: string;
   modelLoading: boolean;
+  modelError: string | null;
   autoRotate: boolean;
   timings: Partial<Record<NRBackendId, BackendTiming>>;
   fps: number;
@@ -105,7 +106,7 @@ export class DemoController {
   private camera: any = null;
   private controls: any = null;
   private studio: Studio | null = null;
-  private head: LoadedHead | null = null;
+  private model: LoadedModel | null = null;
   private pass: DlssNrPass | null = null;
   private referenceModule: typeof import('three-dlss-nr/reference-backend') | null = null;
   private weightsSource: WeightsSource | null = null;
@@ -142,6 +143,7 @@ export class DemoController {
       resolution: RESOLUTIONS[1],
       modelId: DEFAULT_MODEL_ID,
       modelLoading: true,
+      modelError: null,
       autoRotate: true,
       timings: {},
       fps: 0,
@@ -350,7 +352,8 @@ export class DemoController {
   }
 
   resetCamera(): void {
-    this.camera?.position.set(1.2, 0.25, 5.4);
+    const position = demoModel(this.state.modelId).loader?.cameraPosition ?? [1.2, 0.25, 5.4];
+    this.camera?.position.set(...position);
     this.controls?.target.set(0, 0.05, 0);
     this.controls?.update();
     this.pass?.resetHistory();
@@ -366,22 +369,32 @@ export class DemoController {
   }
 
   async setModel(id: string): Promise<void> {
-    const entry = headModel(id);
-    this.set({ modelId: id, modelLoading: true });
+    const entry = demoModel(id);
+    const previousId = this.model?.object.name ?? DEFAULT_MODEL_ID;
+    this.set({ modelId: id, modelLoading: true, modelError: null });
     try {
-      const head = await loadHead(entry);
+      const model = await loadModel(entry);
       if (this.disposed || this.state.modelId !== id) {
-        head.dispose();
+        model.dispose();
         return;
       }
-      if (this.head) {
-        this.studio!.stage.remove(this.head.object);
-        this.head.dispose();
+      if (this.model) {
+        this.studio!.stage.remove(this.model.object);
+        this.model.dispose();
       }
-      this.head = head;
-      this.studio!.stage.add(head.object);
+      this.model = model;
+      this.studio!.stage.add(model.object);
+      this.studio!.scene.environmentIntensity = entry.loader?.environmentIntensity ?? 0.35;
       // A new subject is a camera cut for the temporal history.
-      this.pass?.resetHistory();
+      this.resetCamera();
+    } catch (error) {
+      if (this.state.modelId === id) {
+        this.set({
+          modelId: previousId,
+          modelLoading: false,
+          modelError: error instanceof Error ? error.message : String(error),
+        });
+      }
     } finally {
       if (this.state.modelId === id) this.set({ modelLoading: false });
     }
@@ -505,7 +518,7 @@ export class DemoController {
     this.renderer?.setAnimationLoop(null);
     this.pass?.dispose();
     this.releasePrepared();
-    this.head?.dispose();
+    this.model?.dispose();
     this.studio?.dispose();
     this.controls?.dispose();
     this.renderer?.dispose();

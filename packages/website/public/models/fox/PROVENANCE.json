@@ -1,0 +1,28 @@
+{
+  "id": "fox",
+  "repository": "https://github.com/KhronosGroup/glTF-Sample-Assets",
+  "revision": "edc7c9e67c639d230715049ee31f9a96a6babbbe",
+  "source": "https://github.com/KhronosGroup/glTF-Sample-Assets/tree/edc7c9e67c639d230715049ee31f9a96a6babbbe/Models/Fox",
+  "output": "scene.glb",
+  "sha256": "49728fe07c593c8b31adb71d9eacd6dca0de465ad9745856c2544b6b050e1838",
+  "byteLength": 155812,
+  "transformations": [
+    "Packed into a self-contained GLB with glTF Transform 4.5.1.",
+    "Deduplicated accessors, meshes, materials and textures; pruned unused data.",
+    "PNG/JPEG texture dimensions capped at 1024 pixels, preserving aspect ratios; lossless WebP encoding. Existing WebP textures preserved.",
+    "No mesh simplification, geometry quantization, or required external decoder."
+  ],
+  "bounds": {
+    "min": [-12.592718124389648, -0.12174476683139801, -88.09500122070312],
+    "max": [12.592718124389648, 78.90718841552734, 66.62486267089844]
+  },
+  "sourceBytes": 162852,
+  "statistics": {
+    "nodes": 26,
+    "meshes": 1,
+    "materials": 1,
+    "textures": 1,
+    "animations": 3,
+    "renderVertexCount": 1728
+  }
+}

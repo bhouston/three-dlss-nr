@@ -131,3 +131,35 @@ Az FPS-mérés: `perf-demo-fps-640x360.json`; képi és állapotbizonyíték:
 A teljes GPU-futás naplója megőrzi az első pillanatkép-eltérést; a későbbi
 GEMM-naplók igazolják a javított ellenőrzést. A snapshot előtt a layout-helyettesítő
 függvények felépülnek, így a deklarációk sorrendje teljes és izolált futásban azonos.
+
+## Új bemutatómodellek – 2026-10-04
+
+Négy helyi, önálló GLB került a meglévő fej mellé: Car Concept,
+Sheen Wood Leather Sofa, Fox és Flight Helmet. A licenc, a szerzők, a forráscommit,
+a módosítások és a GLB hashértéke minden modell mellett elérhető.
+Az anyagok és beágyazott textúrák megmaradtak; a különböző arányokhoz saját
+méretezés és kameranézet tartozik. A választó a View panel alatt található.
+
+Az új ellenőrzések:
+
+- Build, típusellenőrzés, lint, formázás, release és méretellenőrzés: sikeres.
+- CPU: 16 fájl, 88 sikeres teszt.
+- glTF Validator: mind a négy GLB **0 hiba**. A kanapénál hat, már a forrásban
+  meglévő tangens-adat hiányára vonatkozó figyelmeztetés van; ezt a futtató
+  számítja. A tényleges WebGPU megjelenítés és normal map működik.
+- Az öt modell a valódi NVIDIA modellen, Reference WGSL / Natural / Split
+  nézetben betöltődött. A térbeli befoglaló dobozaik a kamera teljes képén belül vannak.
+- Modellváltás közben alkalmazás-, betöltési vagy GPU-hiba nem jelentkezett.
+- A kanapéra a valódi választó billentyűeseményével is át lehetett váltani.
+- A kamera visszaállítása a modellhez megadott nézetre működik.
+- Az összes modell végigváltása után az autóra visszatérve a renderelő memória-
+  és erőforrásszámlálói pontosan az induló autós értékre tértek vissza:
+  123 geometria, 45 textúra, 208 638 955 nyilvántartott bájt.
+- Szándékosan blokkolt modellbetöltésnél az előző modell megmaradt, a hiba
+  megjelent, majd az újbóli sikeres választás törölte a hibajelzést.
+
+Bizonyítékok a `.local/logs` alatt: `scenes-build.log`, `scenes-unit.log`,
+`scenes-gltf-validation.json`, `scene-asset-preparation.json`, valamint az öt
+`scene-<id>-split.png`, `scene-<id>-state.json` és `scene-<id>-projection.json`.
+Az autóra visszatérés: `scene-car-return-projection.json`.
+A számítási hálózat az előző fejezetben ellenőrzött változat maradt.
