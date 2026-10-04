@@ -53,6 +53,31 @@
         return file;
       }
 
+      function waitForNetwork(controller) {
+        return new Promise((resolve, reject) => {
+          const check = () => {
+            const state = controller.getState();
+            const error =
+              (state.phase === 'error' && (state.error || 'A WebGPU demó leállt.')) ||
+              state.weightsError ||
+              (state.network.state === 'failed' &&
+                (state.network.message || 'A neurális hálózat felépítése sikertelen.'));
+            if (error) {
+              unsubscribe();
+              reject(new Error(error));
+            } else if (state.network.state === 'ready') {
+              unsubscribe();
+              resolve();
+            } else {
+              const progress = /\d+\s*\/\s*\d+/.exec(state.network.message);
+              status.textContent = `A videokártya előkészítése${progress ? `: ${progress[0]}.` : '…'} Az első fordítás néhány percig is eltarthat.`;
+            }
+          };
+          const unsubscribe = controller.subscribe(check);
+          check();
+        });
+      }
+
       async function start() {
         try {
           const deadline = Date.now() + 120000;
@@ -89,10 +114,9 @@
             await controller.setBackend(preferred);
           }
           await controller.loadDirectory(files);
-          const state = controller.getState();
-          if (state.weightsError || state.network.state !== 'ready') {
-            throw new Error(state.weightsError || state.network.message);
-          }
+          // A rebuild can supersede the load's build. Wait for its terminal state rather than treating
+          // the still-running kernel compilation as a failed model load.
+          await waitForNetwork(controller);
           controller.setView('split');
           window.__localModelReady = true;
           status.remove();

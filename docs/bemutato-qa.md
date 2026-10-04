@@ -99,3 +99,24 @@ korábban beállított betanított modellt csak a demó felvételeihez és az é
 - [Működő neurális demó](images/explainer/live-demo.jpg)
 
 Bemutatási menet és képkreditek: [bemutato.md](bemutato.md).
+
+## Helyi modellbetöltő javítása
+
+A `compiling kernels 16/420` folyamatjelzés korábban tévesen piros hibát
+váltott ki, amikor a betöltés által indított fordítást egy újabb hálózatépítés
+váltotta fel. A betöltő most feliratkozással megvárja az aktuális hálózat kész
+állapotát. Fordítás közben folyamatjelzést mutat; valódi hálózati, modellsúly-
+vagy GPU-eszközhibánál továbbra is piros hibát jelez.
+
+Az eredeti HTML-szkriptet futtató öt regressziós eset ellenőrzi a késleltetett
+fordítást (három perc után is folyamatban), az azonnal kész hálózatot és három
+valódi hibát. A javítás előtt négy eset hibázott; utána mind az öt sikeres.
+A teljes egységteszt-futtatás 17 fájlban 93 sikeres tesztet adott. A friss
+build, típusellenőrzés, lint, formázás, release-ellenőrzés és méretellenőrzés
+is sikeres. A korábban sikeres GPU- és fidelity-futtatás a változatlan
+számítási kódra vonatkozik; ezt a HTML-javítás után nem ismételtük meg.
+
+A friss production szerver újraindítása után Edge-ben a meglévő helyi
+`nvidia-310.8` modell betöltődött: `Network: ready`, 640 × 360, Reference WGSL,
+autós osztott nézet. A státuszsáv eltűnt, böngészős JavaScript-hiba nem volt.
+[A javított betöltő képernyőképe](images/explainer/local-loader-ready.jpg).
