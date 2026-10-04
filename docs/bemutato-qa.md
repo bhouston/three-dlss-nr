@@ -120,3 +120,43 @@ A friss production szerver újraindítása után Edge-ben a meglévő helyi
 `nvidia-310.8` modell betöltődött: `Network: ready`, 640 × 360, Reference WGSL,
 autós osztott nézet. A státuszsáv eltűnt, böngészős JavaScript-hiba nem volt.
 [A javított betöltő képernyőképe](images/explainer/local-loader-ready.jpg).
+
+## GPU-programok újrafelhasználása felbontásváltáskor
+
+Az oldalfrissítés új WebGPU-eszközt hoz létre. Egy új képméret pedig új,
+méretre specializált programokat igényelhet. A referencia backend korábban
+minden újjáépítéskor új shader-modulokat és layoutokat hozott létre, ezért az
+upstream, objektumazonosságot használó pipeline-gyorsítótár visszaváltáskor
+sem talált egyezést. Ezeket most az adott eszköz élettartamáig megőrizzük.
+A gráf pufferei és az előző képkockák adatai továbbra is újjáépülnek.
+
+A programkészlet kulcsa a ViT tokenmérete és a hozzáadott shaderek teljes
+forrása, neve és belépési pontjai. Az upstream pipeline-kulcs továbbra is
+megkülönbözteti a mátrixméreteket és a modellsúlyok elrendezését. Eszközvesztés
+kiüríti a helyi programkészletet; sikertelen programkészletet nem tartunk meg.
+A referencia és a vendored kód változatlan.
+
+Négy új teszt a tényleges referencia-gráfot és fordítási ütemezőt futtatja egy
+rögzítő GPU-határral, szintetikus súlyokon. A 64 × 64 → 128 × 96 → 64 × 64
+váltás utolsó lépése a javítás előtt 366 új pipeline-létrehozást kért, utána
+nullát. A tesztek külön ellenőrzik az új eszközt, az eltérő extra shader-forrást
+és a sikertelen shader-előkészítés utáni újrapróbálást. A teljes egységtesztcsomag
+18 fájlban 97 sikeres tesztet adott.
+
+Edge-ben a meglévő helyi modell 640 × 360-as indítása és az első 960 × 540-es
+előkészítés után mindkét irányú visszaváltás `Network: ready` állapotba jutott.
+A második 960 × 540-es váltás és a kész állapotot váró böngészőellenőrzés
+együtt 186 ms volt; ez egyetlen helyi megfigyelés, automatizálási idővel,
+nem általános teljesítményígéret. Böngészős JavaScript-hiba nem volt.
+[A visszaváltott demó képernyőképe](images/explainer/resolution-cache.jpg).
+
+A folyamatjelzés magyarul külön elmagyarázza az első méret előkészítését,
+a visszaváltás gyorsítótárát és a frissítés új GPU-munkamenetét. A számláló
+gráffeladatokat számol, beleértve a gyorsítótárból átvett programokat is;
+nem 420 különálló program újrafordítását jelenti.
+
+A javítás utáni teljes GPU-futtatás 20 sikeres és 2 kihagyott fájlt,
+112 sikeres és 55 kihagyott tesztet adott. A zárolt telepítés, build,
+típusellenőrzés, lint, formázás, méretkorlátok és release-ellenőrzés is
+sikeres. A tárolt fidelity-eredmények ellenőrzése változatlanul sikeres:
+8 jelenet, 1344 tenzorösszevetés és 192 képösszevetés, bitpontos egyezés.

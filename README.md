@@ -114,6 +114,11 @@ renderer.setAnimationLoop(async () => {
 Load the model once and share it: resizes and network rebuilds reuse it instead of re-reading 141 MiB. Call
 `pass.resetHistory()` on a camera cut. The internal size is capped at 1280x720.
 
+The reference backend also keeps shader modules and layouts on the same GPU device, so returning to a previously
+built resolution reuses its compiled pipelines. A new size can require new specialized pipelines; the progress
+counter counts graph dispatches being prepared, including cache hits. Reloading the page creates a new device and
+rebuilds the network. The application cache lasts for that device's lifetime, rather than across page reloads.
+
 To run the network on your own inputs instead of a scene, use a backend directly:
 
 ```ts

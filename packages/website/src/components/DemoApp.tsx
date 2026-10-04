@@ -174,7 +174,11 @@ function BuildProgress({ state }: { state: DemoState }) {
   return (
     <div className="absolute inset-x-0 bottom-0 bg-black/70 p-3 text-xs text-white backdrop-blur">
       <div className="flex justify-between gap-2">
-        <span className="truncate">Preparing the network: {state.network.message}</span>
+        <span className="truncate">
+          {match
+            ? `GPU-feladatok előkészítése: ${match[0]}`
+            : `A neurális hálózat előkészítése: ${state.network.message}`}
+        </span>
         <span className="shrink-0 tabular-nums">{seconds.toFixed(0)} s</span>
       </div>
       <div className="mt-2 h-1 overflow-hidden rounded bg-white/20">
@@ -185,8 +189,8 @@ function BuildProgress({ state }: { state: DemoState }) {
         )}
       </div>
       <p className="mt-1 text-white/60">
-        The first build compiles a few hundred GPU pipelines; on Windows (D3D12) this can take a minute. Later builds at
-        the same resolution reuse them.
+        Az első indítás és egy új felbontás GPU-programok fordítását igényli, ami akár néhány percig is tarthat.
+        Visszaváltáskor a már elkészült programokat használjuk. Az oldal frissítése új GPU-munkamenetet indít.
       </p>
     </div>
   );
