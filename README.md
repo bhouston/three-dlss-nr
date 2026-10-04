@@ -32,6 +32,12 @@ Try it live at **[three-dlss-nr.ben3d.ca](https://three-dlss-nr.ben3d.ca)**.
 
 ## What the network does
 
+The website now opens with a [Hungarian interactive explainer](http://localhost:3300/) for presentations:
+DLSS 5 in plain language, live Three.js objects, scroll parallax, accessible draggable comparisons using real
+local demo captures, and a screenshot gallery. The original network demo is at `/demo`; `/local-demo.html`
+retains the configured local-model workflow. On this Windows setup, double-click `start-presentation.cmd`.
+See [the explainer guide](docs/bemutato.md) and [local startup instructions](INDITAS.md).
+
 From [upstream's README](https://github.com/maanHimself/OpenDLSS-NR/tree/9d08f41#the-network): it is a generative
 neural rendering network (NVIDIA's term). It **re-renders the frame the engine already drew**, generating detail from
 injected noise and adjusting tone, structure and skin under a style setting. Input and output are the same

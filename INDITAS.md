@@ -7,6 +7,19 @@ együtt helyben vannak. A modelleket a [JELENETEK.md](JELENETEK.md) mutatja be.
 
 ## Indítás
 
+A magyar, animált bemutatóoldalhoz kattints duplán a `start-presentation.cmd`
+fájlra. Címe: <http://localhost:3300/>. A képes összehasonlítás WebGPU nélkül
+is használható; a 3D formák a Three.js-szel készülnek. Az oldalon az **Élő demó**
+gomb a már beállított helyi neurális demót nyitja meg.
+
+```powershell
+cd D:\AI\three-dlss-nr
+.\start-presentation.cmd
+```
+
+A bemutató elindítójánál is a `Ctrl+C` vagy a `stop-demo.cmd` állítja le a
+szervert. Az oldal és az élő demó ugyanazt a szervert használja.
+
 Kattints duplán a `start-demo.cmd` fájlra, vagy futtasd PowerShellben:
 
 ```powershell
@@ -61,7 +74,7 @@ hagyott helyi könyvtárban vannak.
 Forráskiadás: <https://github.com/Merserk/dlss5-visual-enhancer/releases/tag/v14.0>.
 A beolvasó eszköz: <https://github.com/iamwavecut/MLX-DLSS>.
 
-Az eredeti demó, automatikus modellbetöltés nélkül: <http://localhost:3300>.
+Az eredeti demó, automatikus modellbetöltés nélkül: <http://localhost:3300/demo>.
 Ezen az oldalon a **Load model directory…** gombbal választhatod ki a fenti
 modellmappát vagy egy másik kompatibilis modellt.
 

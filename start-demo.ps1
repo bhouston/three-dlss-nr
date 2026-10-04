@@ -1,14 +1,15 @@
 param(
     [ValidateRange(1024, 65535)]
     [int]$Port = 3300,
-    [switch]$NoBrowser
+    [switch]$NoBrowser,
+    [switch]$Presentation
 )
 
 $ErrorActionPreference = 'Stop'
 $projectRoot = $PSScriptRoot
 $nodeExe = Join-Path $projectRoot '.local\tools\node-v26.10.0-win-x64\node.exe'
 $serverEntry = Join-Path $projectRoot 'packages\website\.output\server\index.mjs'
-$url = "http://localhost:$Port/local-demo.html"
+$url = if ($Presentation) { "http://localhost:$Port/" } else { "http://localhost:$Port/local-demo.html" }
 
 function Open-DemoBrowser {
     $browserCandidates = @(
