@@ -3,6 +3,7 @@ import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } fro
 import type { DemoController, DemoState, FrameMode } from '@/lib/demo';
 import { DEMO_MODELS, demoModel } from '@/lib/models';
 import { UPSTREAM_URL } from '@/lib/links';
+import { BackendHelp } from './BackendHelp';
 
 const RESOLUTION_OPTIONS = [
   { width: 640, height: 360 },
@@ -474,6 +475,7 @@ function Controls({ state, controller }: { state: DemoState; controller: DemoCon
       </Section>
 
       <Section title="Backend">
+        <p className="text-xs text-muted-foreground">Két megvalósítás, ugyanaz a neurális hálózat.</p>
         <div className="flex flex-col gap-1">
           {state.backends.map((option) => (
             <label
@@ -499,9 +501,13 @@ function Controls({ state, controller }: { state: DemoState; controller: DemoCon
             </label>
           ))}
         </div>
+        <details className="text-xs text-muted-foreground">
+          <summary className="cursor-pointer font-medium text-foreground">Mi a különbség a két backend között?</summary>
+          <BackendHelp className="mt-3 space-y-3 [&_dd]:mt-1 [&_dl]:space-y-3 [&_dt]:font-semibold [&_dt]:text-foreground" />
+        </details>
         {state.backendId === 'reference-wgsl' ? (
           <div className="flex flex-col gap-1 text-xs">
-            <span className="text-muted-foreground">Frame around the reference network</span>
+            <span className="text-muted-foreground">Kép előkészítése és összeállítása</span>
             <Segmented<FrameMode>
               value={state.frameMode}
               onChange={(mode) => void controller.setFrameMode(mode)}
@@ -510,6 +516,10 @@ function Controls({ state, controller }: { state: DemoState; controller: DemoCon
                 { value: 'reference', label: 'Upstream frame.wgsl', title: 'the reference demo frame, recorded as is' },
               ]}
             />
+            <p className="text-muted-foreground">
+              Ez a kapcsoló a kép előkészítését és az eredmény összeillesztését választja ki. A hálózat backendje
+              továbbra is Reference WGSL.
+            </p>
           </div>
         ) : null}
         <p className="text-xs text-muted-foreground">

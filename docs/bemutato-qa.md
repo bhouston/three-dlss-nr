@@ -160,3 +160,23 @@ A javítás utáni teljes GPU-futtatás 20 sikeres és 2 kihagyott fájlt,
 típusellenőrzés, lint, formázás, méretkorlátok és release-ellenőrzés is
 sikeres. A tárolt fidelity-eredmények ellenőrzése változatlanul sikeres:
 8 jelenet, 1344 tenzorösszevetés és 192 képösszevetés, bitpontos egyezés.
+
+## A két backend közérthető súgója
+
+A bemutató `#backends` fejezete és a demó Backend paneljének lenyitható súgója
+ugyanazt a magyar magyarázatot használja. Külön leírja a TSL Three.js-es átírását,
+a Reference WGSL eredeti OpenDLSS-NR-programjait, a `shader-f16` követelményt,
+a tesztekkel ellenőrzött számítási egyezést és az azonos beállításokkal mért
+GPU-idő értelmezését. A referencia hálózat alatti kép-előkészítési kapcsoló
+külön magyarázatot kapott.
+
+A friss build, típusellenőrzés, lint és formázás sikeres. Edge-ben ellenőriztük
+a bemutató fejezetét, a demó súgójának megnyitását és bezárását, illetve a
+390 px-es demónézet olvashatóságát; vízszintes túlfutás nem volt. Az eredeti
+asztali demónézetet visszaállítottuk, a helyi modell `Network: ready` állapotba
+jutott. A bemutató új egyoszlopos mobilos töréspontját kódellenőrzéssel vizsgáltuk.
+Ez szöveges és elrendezési módosítás: a számítási kód változatlan, az előző
+szakasz 97 egységteszt- és 112 GPU-teszteredményét nem futtattuk újra.
+
+- [Backendmagyarázat a bemutatóoldalon](images/explainer/backend-help-desktop.jpg)
+- [Mobilos Backend panel, csukott súgóval](images/explainer/backend-help-demo-mobile.jpg)

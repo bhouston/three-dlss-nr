@@ -751,6 +751,47 @@ html:has(.explainer) {
   width: 16px;
   height: 16px;
 }
+.backend-section {
+  border-top: 1px solid var(--line);
+  padding-block: 55px 90px;
+}
+.backend-section h2 {
+  font-size: clamp(28px, 3.5vw, 52px);
+  max-width: 800px;
+  margin-bottom: 28px;
+}
+.backend-help p,
+.backend-help dd {
+  color: var(--quiet);
+  font-size: 15px;
+  line-height: 1.75;
+}
+.backend-help > p {
+  max-width: 900px;
+}
+.backend-help dl {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 45px;
+  margin-block: 32px;
+}
+.backend-help dl > div {
+  border-top: 1px solid var(--line);
+  padding-top: 22px;
+}
+.backend-help dt {
+  font-weight: 700;
+  font-size: 20px;
+}
+.backend-help dd {
+  margin-top: 12px;
+}
+@media (max-width: 700px) {
+  .backend-help dl {
+    grid-template-columns: 1fr;
+    gap: 24px;
+  }
+}
 .gallery {
   display: grid;
   grid-template-columns: 0.85fr 2.2fr;

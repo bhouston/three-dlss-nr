@@ -21,6 +21,9 @@ elválasztóhoz nem szükséges WebGPU vagy modellbetöltés.
 4. A Three.js színpadon válts Forma, Anyag és Fény között; forgasd a tárgyat.
 5. Az OpenDLSS-NR a számítást alkotja újra, a three-dlss-nr azt a webes
    Three.js környezetbe kapcsolja. A kód és a betanított modell licence különálló.
+   Az „A két backend” fejezet a Three.js TSL-átírást és az eredeti Reference WGSL
+   megvalósítást hasonlítja össze. Ugyanez a magyarázat a demó Backend paneljének
+   „Mi a különbség a két backend között?” súgójában is elérhető.
 6. Nagyítsd ki a galéria képeit. Escape vagy a Bezárás gomb zárja az ablakot.
 7. Az Élő demó gombbal válts át a tényleges neurális feldolgozásra.
 

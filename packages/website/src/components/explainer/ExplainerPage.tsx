@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link } from '@tanstack/react-router';
 
 import { GITHUB_URL, PARITY_PATH, UPSTREAM_URL } from '@/lib/links';
+import { BackendHelp } from '../BackendHelp';
 import { Comparison } from './Comparison';
 import { Gallery } from './Gallery';
 import { Arrow, Cube } from './Icons';
@@ -312,6 +313,11 @@ export function ExplainerPage() {
               </div>
             </article>
           </div>
+        </section>
+        <section id="backends" className="backend-section page-width reveal" aria-labelledby="backends-title">
+          <span className="section-index">06 / A KÉT BACKEND</span>
+          <h2 id="backends-title">Ugyanaz a hálózat, kétféle futtatás.</h2>
+          <BackendHelp className="backend-help" />
         </section>
         <Gallery />
         <section className="demo-cta" aria-labelledby="demo-cta-title">
