@@ -15,6 +15,14 @@ ones:
   That excludes this machine's Dawn, and it excludes lavapipe, which folds `f32(f16(x))`; see
   `src/README-internals.md`.
 
+The TSL shared-memory tile uses padded physical addresses to reduce bank conflicts:
+`A[row * 9 + q]` and `B[q * 36 + column + floor(column / 8)]`, for both values and
+exponents. Logical operands and reduction order remain the ones below. This adapts
+the shared-memory padding idea in OpenDLSS-NR's `matmul/padded.js` to TSL's different
+2-row / 4-column invocation mapping. The four tiles together use 18 KiB, within
+the existing 32 KiB network requirement. Numerical helpers retain exact RNE rounding,
+with shorter integer paths for normal half publications.
+
 Line numbers below are in the `e4` non-batched variant. To dump it:
 
 ```sh
@@ -110,7 +118,7 @@ the TSL has no counterpart for those branches. JS-time constants replace all fla
    workgroups store half outputs past the tensor. WebGPU's robust access then clamps or discards those stores, so
    they can land on the last element. This first happens at a 1920x1152 field (2,211,840 rows, 69120 row tiles) in
    level-0 qkv and dual GEMMs. Our kernel guards rows whenever a tile can be partial or out of range.
-2. **Workgroup memory** is `f32` / `i32` (16 KiB) instead of `f16` (8.7 KiB), and B is k-major instead of padded.
-   This changes layout only.
+2. **Workgroup memory** is `f32` / `i32` (18 KiB with padding) instead of `f16` (8.7 KiB), and B is k-major with
+   an extra slot per eight columns. This changes layout only.
 3. **Operands are not scaled by 4.** The reference relies on `|w| <= 9` (model.js) for exact half products. Our f32
    products are exact for any E4 weight, so the results differ only for a weight the reference itself refuses to load.

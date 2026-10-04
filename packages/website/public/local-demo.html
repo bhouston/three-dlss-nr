@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="hu">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>three-dlss-nr – helyi modell</title>
+    <style>
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+        background: white;
+      }
+      iframe {
+        display: block;
+        width: 100%;
+        height: 100%;
+        border: 0;
+      }
+      #status {
+        position: fixed;
+        bottom: 16px;
+        left: 16px;
+        max-width: min(600px, calc(100vw - 64px));
+        padding: 12px 16px;
+        border-radius: 8px;
+        background: #182a53;
+        color: white;
+        font:
+          14px/1.5 system-ui,
+          sans-serif;
+        box-shadow: 0 4px 20px #0003;
+      }
+    </style>
+  </head>
+  <body>
+    <iframe id="demo" src="/" title="three-dlss-nr"></iframe>
+    <div id="status" role="status">A helyi modell betöltése…</div>
+    <script type="module">
+      const frame = document.querySelector('#demo');
+      const status = document.querySelector('#status');
+      const modelUrl = '/private-model/';
+
+      async function bytes(relativePath) {
+        const response = await fetch(modelUrl + relativePath);
+        if (!response.ok) throw new Error(`${relativePath}: HTTP ${response.status}`);
+        return response.arrayBuffer();
+      }
+
+      function localFile(data, relativePath) {
+        const file = new File([data], relativePath.split('/').at(-1));
+        Object.defineProperty(file, 'webkitRelativePath', { value: `nvidia-310.8/${relativePath}` });
+        return file;
+      }
+
+      async function start() {
+        try {
+          const deadline = Date.now() + 120000;
+          let controller;
+          while (Date.now() < deadline) {
+            controller = frame.contentWindow.__nrDemo;
+            if (controller?.getState().phase === 'error') throw new Error(controller.getState().error);
+            if (controller?.getState().phase === 'ready') break;
+            await new Promise((resolve) => setTimeout(resolve, 100));
+          }
+          if (controller?.getState().phase !== 'ready') throw new Error('A WebGPU demó nem indult el időben.');
+
+          const manifestData = await bytes('manifest.json');
+          const manifest = JSON.parse(new TextDecoder().decode(manifestData));
+          const files = [localFile(manifestData, 'manifest.json')];
+          const stages = await Promise.all(
+            manifest.stages.map(async (stage) => {
+              const relativePath = `model/${stage.file}`;
+              return localFile(await bytes(relativePath), relativePath);
+            }),
+          );
+          files.push(...stages);
+
+          await controller.setResolution({ width: 640, height: 360 });
+          controller.setSettings({ style: 2 });
+          const requestedBackend = new URLSearchParams(location.search).get('backend');
+          const backends = controller.getState().backends;
+          const preferred = requestedBackend || 'reference-wgsl';
+          if (backends.some((backend) => backend.id === preferred && !backend.reason)) {
+            await controller.setBackend(preferred);
+          }
+          await controller.loadDirectory(files);
+          const state = controller.getState();
+          if (state.weightsError || state.network.state !== 'ready') {
+            throw new Error(state.weightsError || state.network.message);
+          }
+          controller.setView('split');
+          window.__localModelReady = true;
+          status.remove();
+        } catch (error) {
+          status.style.background = '#8a1d24';
+          status.textContent = `A helyi modell nem töltődött be: ${error.message}`;
+          console.error(error);
+        }
+      }
+
+      if (frame.contentDocument?.readyState === 'complete' && frame.contentWindow.__nrDemo) {
+        void start();
+      } else {
+        frame.addEventListener('load', () => void start(), { once: true });
+      }
+    </script>
+  </body>
+</html>

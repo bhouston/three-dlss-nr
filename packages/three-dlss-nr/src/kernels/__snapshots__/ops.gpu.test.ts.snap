@@ -37,6 +37,33 @@ fn nr_f16_bits ( value : f32 ) -> u32 {
 	var nodeVar# : u32;
 	var nodeVar# : u32;
 	var nodeVar# : u32;
+
+	nodeVar# = 0u;
+	nodeVar# = bitcast<u32>( value );
+	nodeVar# = ( ( nodeVar# >> 23u ) & 255u );
+
+	if ( ( ( nodeVar# >= 113u ) && ( nodeVar# <= 142u ) ) ) {
+
+		nodeVar# = ( nodeVar# & 2147483647u );
+		nodeVar# = ( ( ( nodeVar# >> 16u ) & 32768u ) | ( ( ( ( nodeVar# + 4095u ) + ( ( nodeVar# >> 13u ) & 1u ) ) >> 13u ) - 114688u ) );
+
+	} else {
+
+		nodeVar# = nr_f16_bits_fallback( value );
+
+	}
+
+	return nodeVar#;
+
+}
+
+@compute @workgroup_size( 64, 1, 1 )
+fn nr_f16_bits_fallback ( value : f32 ) -> u32 {
+
+	var nodeVar# : u32;
+	var nodeVar# : u32;
+	var nodeVar# : u32;
+	var nodeVar# : u32;
 	var nodeVar# : u32;
 	var nodeVar# : u32;
 	var nodeVar# : i32;
@@ -77,7 +104,6 @@ fn nr_f16_bits ( value : f32 ) -> u32 {
 
 }
 
-@compute @workgroup_size( 64, 1, 1 )
 fn nr_round_shift_right_even ( value : u32, shift : u32 ) -> u32 {
 
 	var nodeVar# : u32;
@@ -308,6 +334,32 @@ fn nr_f16_bits ( value : f32 ) -> u32 {
 	var nodeVar# : u32;
 	var nodeVar# : u32;
 	var nodeVar# : u32;
+
+	nodeVar# = 0u;
+	nodeVar# = bitcast<u32>( value );
+	nodeVar# = ( ( nodeVar# >> 23u ) & 255u );
+
+	if ( ( ( nodeVar# >= 113u ) && ( nodeVar# <= 142u ) ) ) {
+
+		nodeVar# = ( nodeVar# & 2147483647u );
+		nodeVar# = ( ( ( nodeVar# >> 16u ) & 32768u ) | ( ( ( ( nodeVar# + 4095u ) + ( ( nodeVar# >> 13u ) & 1u ) ) >> 13u ) - 114688u ) );
+
+	} else {
+
+		nodeVar# = nr_f16_bits_fallback( value );
+
+	}
+
+	return nodeVar#;
+
+}
+
+fn nr_f16_bits_fallback ( value : f32 ) -> u32 {
+
+	var nodeVar# : u32;
+	var nodeVar# : u32;
+	var nodeVar# : u32;
+	var nodeVar# : u32;
 	var nodeVar# : u32;
 	var nodeVar# : u32;
 	var nodeVar# : i32;
@@ -373,7 +425,25 @@ fn nr_f16_to_f32 ( bits : u32 ) -> f32 {
 
 fn nr_round_f16 ( value : f32 ) -> f32 {
 
-	return nr_f16_to_f32( nr_f16_bits( value ) );
+	var nodeVar# : f32;
+	var nodeVar# : u32;
+	var nodeVar# : u32;
+
+	nodeVar# = 0.0;
+	nodeVar# = bitcast<u32>( value );
+	nodeVar# = ( nodeVar# & 2147483647u );
+
+	if ( ( ( nodeVar# >= 947912704u ) && ( nodeVar# < 1199566848u ) ) ) {
+
+		nodeVar# = bitcast<f32>( ( ( ( nodeVar# + 4095u ) + ( ( nodeVar# >> 13u ) & 1u ) ) & 4294959104u ) );
+
+	} else {
+
+		nodeVar# = nr_f16_to_f32( nr_f16_bits( value ) );
+
+	}
+
+	return nodeVar#;
 
 }
 
@@ -611,6 +681,32 @@ fn nr_f16_bits ( value : f32 ) -> u32 {
 	var nodeVar# : u32;
 	var nodeVar# : u32;
 	var nodeVar# : u32;
+
+	nodeVar# = 0u;
+	nodeVar# = bitcast<u32>( value );
+	nodeVar# = ( ( nodeVar# >> 23u ) & 255u );
+
+	if ( ( ( nodeVar# >= 113u ) && ( nodeVar# <= 142u ) ) ) {
+
+		nodeVar# = ( nodeVar# & 2147483647u );
+		nodeVar# = ( ( ( nodeVar# >> 16u ) & 32768u ) | ( ( ( ( nodeVar# + 4095u ) + ( ( nodeVar# >> 13u ) & 1u ) ) >> 13u ) - 114688u ) );
+
+	} else {
+
+		nodeVar# = nr_f16_bits_fallback( value );
+
+	}
+
+	return nodeVar#;
+
+}
+
+fn nr_f16_bits_fallback ( value : f32 ) -> u32 {
+
+	var nodeVar# : u32;
+	var nodeVar# : u32;
+	var nodeVar# : u32;
+	var nodeVar# : u32;
 	var nodeVar# : u32;
 	var nodeVar# : u32;
 	var nodeVar# : i32;
@@ -682,7 +778,25 @@ fn nr_pow2 ( e : i32 ) -> f32 {
 
 fn nr_round_f16 ( value : f32 ) -> f32 {
 
-	return nr_f16_to_f32( nr_f16_bits( value ) );
+	var nodeVar# : f32;
+	var nodeVar# : u32;
+	var nodeVar# : u32;
+
+	nodeVar# = 0.0;
+	nodeVar# = bitcast<u32>( value );
+	nodeVar# = ( nodeVar# & 2147483647u );
+
+	if ( ( ( nodeVar# >= 947912704u ) && ( nodeVar# < 1199566848u ) ) ) {
+
+		nodeVar# = bitcast<f32>( ( ( ( nodeVar# + 4095u ) + ( ( nodeVar# >> 13u ) & 1u ) ) & 4294959104u ) );
+
+	} else {
+
+		nodeVar# = nr_f16_to_f32( nr_f16_bits( value ) );
+
+	}
+
+	return nodeVar#;
 
 }
 
@@ -904,6 +1018,32 @@ fn nr_f16_bits ( value : f32 ) -> u32 {
 	var nodeVar# : u32;
 	var nodeVar# : u32;
 	var nodeVar# : u32;
+
+	nodeVar# = 0u;
+	nodeVar# = bitcast<u32>( value );
+	nodeVar# = ( ( nodeVar# >> 23u ) & 255u );
+
+	if ( ( ( nodeVar# >= 113u ) && ( nodeVar# <= 142u ) ) ) {
+
+		nodeVar# = ( nodeVar# & 2147483647u );
+		nodeVar# = ( ( ( nodeVar# >> 16u ) & 32768u ) | ( ( ( ( nodeVar# + 4095u ) + ( ( nodeVar# >> 13u ) & 1u ) ) >> 13u ) - 114688u ) );
+
+	} else {
+
+		nodeVar# = nr_f16_bits_fallback( value );
+
+	}
+
+	return nodeVar#;
+
+}
+
+fn nr_f16_bits_fallback ( value : f32 ) -> u32 {
+
+	var nodeVar# : u32;
+	var nodeVar# : u32;
+	var nodeVar# : u32;
+	var nodeVar# : u32;
 	var nodeVar# : u32;
 	var nodeVar# : u32;
 	var nodeVar# : i32;
@@ -975,7 +1115,25 @@ fn nr_pow2 ( e : i32 ) -> f32 {
 
 fn nr_round_f16 ( value : f32 ) -> f32 {
 
-	return nr_f16_to_f32( nr_f16_bits( value ) );
+	var nodeVar# : f32;
+	var nodeVar# : u32;
+	var nodeVar# : u32;
+
+	nodeVar# = 0.0;
+	nodeVar# = bitcast<u32>( value );
+	nodeVar# = ( nodeVar# & 2147483647u );
+
+	if ( ( ( nodeVar# >= 947912704u ) && ( nodeVar# < 1199566848u ) ) ) {
+
+		nodeVar# = bitcast<f32>( ( ( ( nodeVar# + 4095u ) + ( ( nodeVar# >> 13u ) & 1u ) ) & 4294959104u ) );
+
+	} else {
+
+		nodeVar# = nr_f16_to_f32( nr_f16_bits( value ) );
+
+	}
+
+	return nodeVar#;
 
 }
 

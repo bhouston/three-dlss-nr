@@ -198,6 +198,39 @@ describe('TSL numerics vs the TS oracle, exhaustive', () => {
     expect(result.mismatches, describeMismatches('loadHalf', result)).toBe(0);
   });
 
+  it('half rounding at every positive and negative halfway point and its f32 neighbours', async () => {
+    const patterns: number[] = [];
+    const addMidpoint = (midpoint: number) => {
+      const bits = oracle.f32Bits(midpoint);
+      for (const offset of [-1, 0, 1]) {
+        patterns.push((bits + offset) >>> 0, ((bits + offset) | 0x80000000) >>> 0);
+      }
+    };
+    for (let half = 0; half < 0x7bff; ++half) {
+      addMidpoint((oracle.f16ToNumber(half) + oracle.f16ToNumber(half + 1)) / 2);
+    }
+    addMidpoint(65520); // finite-to-infinity tie, outside the direct f32 rounding path
+    const words = Uint32Array.from(patterns);
+    for (const [label, helper, expected] of [
+      ['half_midpoint_bits', nrF16Bits, (value: number) => oracle.f16Bits(value)],
+      [
+        'half_midpoint_round',
+        (value: TSLNode) => floatBitsToUint(nrRoundF16(value)),
+        (value: number) => oracle.f32Bits(oracle.roundF16(value)),
+      ],
+    ] as const) {
+      const actual = await runPerElement(gpu.renderer, {
+        label,
+        count: words.length,
+        inputs: { words: wordsBuffer(words) },
+        compute: (index, { words: view }) => helper(loadF32(view, index)),
+      });
+      const reference = Array.from(words, (bits) => expected(oracle.f32FromBits(bits)));
+      const diff = diffArrays(actual, reference);
+      expect(diff.mismatches, describeMismatches(label, diff)).toBe(0);
+    }
+  });
+
   it('nrF16Bits and nrRoundF16 over 2^20 random f32 patterns', async () => {
     const words = randomF32Patterns(1 << 20, 0x1234567);
     const bits = await runPerElement(gpu.renderer, {

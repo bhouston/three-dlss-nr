@@ -3,9 +3,9 @@
 // plus `publish_e4_code` of src/matmul/packed-activation.js (`nrPublishE4CodeGemm`).
 //
 // The publication grid in TSL. Every helper is a layout `Fn` (a real WGSL `fn`, so kernels that call it stay small)
-// with the same name, arguments and arithmetic as its WGSL twin, written branch-free: both sides of each `if` are
-// computed and the result is picked with `pick` (WGSL `select`). Every helper is checked exhaustively on the GPU against the
-// reference's numerics fixture and the TS oracle (numerics.gpu.test.ts).
+// with the same name, arguments and arithmetic as its WGSL twin. Most helpers are branch-free; half publication
+// uses a short exact path for normal inputs and the original fallback for exceptional values. Every helper is
+// checked exhaustively on the GPU against the reference's numerics fixture and the TS oracle (numerics.gpu.test.ts).
 //
 // Rules this file keeps (design section 3):
 //   * No f16 type: everything is f32 or integer arithmetic on bit patterns.
@@ -17,6 +17,7 @@
 
 import {
   Fn,
+  If,
   abs,
   clamp,
   countLeadingZeros,
@@ -59,7 +60,7 @@ export const nrRoundShiftRightEven = Fn(([value, shift]: [TSLNode, TSLNode]) => 
 });
 
 /** IEEE binary16 bit pattern of an f32, round-to-nearest-even (`f16_bits`). */
-export const nrF16Bits = Fn(([value]: [TSLNode]) => {
+const nrF16BitsFallback = Fn(([value]: [TSLNode]) => {
   const bits = floatBitsToUint(value);
   const sign = bits.shiftRight(u(16)).bitAnd(u(0x8000));
   const exponent = bits.shiftRight(u(23)).bitAnd(u(0xff));
@@ -92,6 +93,24 @@ export const nrF16Bits = Fn(([value]: [TSLNode]) => {
       pick(halfExponent.lessThanEqual(i(0)), subnormal, normal),
     ),
   );
+}).setLayout({ name: 'nr_f16_bits_fallback', type: 'uint', inputs: [{ name: 'value', type: 'float' }] });
+
+/** Exact half publication with a small common path for normal finite inputs. */
+export const nrF16Bits = Fn(([value]: [TSLNode]) => {
+  const bits = floatBitsToUint(value);
+  const exponent = bits.shiftRight(u(23)).bitAnd(u(0xff));
+  const result = u(0).toVar();
+  // Carry into exponent 31 correctly produces infinity. Subnormals and NaNs
+  // retain the fully specified fallback, without executing it on normal values.
+  If(exponent.greaterThanEqual(u(113)).and(exponent.lessThanEqual(u(142))), () => {
+    const sign = bits.shiftRight(u(16)).bitAnd(u(0x8000));
+    const magnitude = bits.bitAnd(u(0x7fffffff));
+    const rounded = magnitude.add(u(0xfff)).add(magnitude.shiftRight(u(13)).bitAnd(u(1)));
+    result.assign(sign.bitOr(rounded.shiftRight(u(13)).sub(u(112 * 1024))));
+  }).Else(() => {
+    result.assign(nrF16BitsFallback(value));
+  });
+  return result;
 }).setLayout({ name: 'nr_f16_bits', type: 'uint', inputs: [{ name: 'value', type: 'float' }] });
 
 /**
@@ -112,7 +131,27 @@ export const nrF16ToF32 = Fn(([bits]: [TSLNode]) => {
 }).setLayout({ name: 'nr_f16_to_f32', type: 'float', inputs: [{ name: 'bits', type: 'uint' }] });
 
 /** One publication to the half grid (`round_f16`). */
-export const nrRoundF16 = Fn(([value]: [TSLNode]) => nrF16ToF32(nrF16Bits(value))).setLayout({
+export const nrRoundF16 = Fn(([value]: [TSLNode]) => {
+  const bits = floatBitsToUint(value);
+  const magnitude = bits.bitAnd(u(0x7fffffff));
+  const result = f(0).toVar();
+  // A normal, finite half can be rounded directly on the f32 bit pattern.
+  // 65520 is the halfway point that rounds to infinity; leave it and every
+  // subnormal/special value to the original conversion (including signed zero).
+  If(magnitude.greaterThanEqual(u(0x38800000)).and(magnitude.lessThan(u(0x477ff000))), () => {
+    result.assign(
+      uintBitsToFloat(
+        bits
+          .add(u(0xfff))
+          .add(bits.shiftRight(u(13)).bitAnd(u(1)))
+          .bitAnd(u(0xffffe000)),
+      ),
+    );
+  }).Else(() => {
+    result.assign(nrF16ToF32(nrF16Bits(value)));
+  });
+  return result;
+}).setLayout({
   name: 'nr_round_f16',
   type: 'float',
   inputs: [{ name: 'value', type: 'float' }],
