@@ -322,7 +322,9 @@ export class DlssNrPass {
 
   /**
    * Use `builder`'s network (or none). Disposes the current one, builds the new one at the current size and resolves
-   * when it is ready (rejects if the build fails; the pass then shows NR off). The history starts over.
+   * when this build finishes (rejects if the current build fails; the pass then shows NR off). A build superseded
+   * by setNetwork, setSize or disposal resolves after releasing its result, without guaranteeing the current
+   * network is ready. Observe onStatus/state for current readiness. The history starts over.
    */
   async setNetwork(builder: DlssNrNetworkBuilder | null): Promise<void> {
     this.builder = builder;

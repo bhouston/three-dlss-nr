@@ -121,6 +121,9 @@ export class DemoController {
   private disposed = false;
   private networkRequest = 0;
   private modelRequest = 0;
+  private weightsRequest = 0;
+  private networkPreparing = false;
+  private lifetime = new AbortController();
 
   constructor() {
     this.state = {
@@ -164,6 +167,61 @@ export class DemoController {
   private set(patch: Partial<DemoState>): void {
     this.state = { ...this.state, ...patch };
     for (const listener of this.listeners) listener();
+  }
+
+  private networkStatus = (state: DlssNrNetworkState, message: string): void => {
+    // While the current request uploads weights, the pass may still report a previous build's status.
+    if (this.disposed || this.networkPreparing) return;
+    this.set({
+      network: {
+        state,
+        message,
+        since: state === this.state.network.state ? this.state.network.since : performance.now(),
+      },
+    });
+  };
+
+  /**
+   * Wait for the current weights/backend/resolution to reach ready, following superseding rebuilds. Weight import
+   * methods complete their own attempt; they do not guarantee that a newer build is ready. Call this afterwards
+   * when readiness is required. Compilation has no timeout: progress stays pending until ready, failure, clearing
+   * weights, disposal or caller cancellation. An AbortSignal can bound a caller's wait without canceling the build.
+   */
+  waitForNetworkReady({ signal }: { signal?: AbortSignal } = {}): Promise<void> {
+    return new Promise((resolve, reject) => {
+      let settled = false;
+      let unsubscribe: (() => void) | undefined;
+      const finish = (error?: unknown) => {
+        if (settled) return;
+        settled = true;
+        unsubscribe?.();
+        signal?.removeEventListener('abort', canceled);
+        this.lifetime.signal.removeEventListener('abort', disposed);
+        if (error !== undefined) reject(error);
+        else resolve();
+      };
+      const canceled = () =>
+        finish(signal?.reason ?? new DOMException('Network readiness wait canceled', 'AbortError'));
+      const disposed = () => finish(new Error('Demo controller disposed'));
+      const check = () => {
+        if (this.disposed) return disposed();
+        if (signal?.aborted) return canceled();
+        const state = this.state;
+        if (state.phase === 'error') return finish(new Error(state.error ?? 'Demo initialization failed'));
+        if (state.weightsError) return finish(new Error(state.weightsError));
+        if (!state.weights && !state.weightsBusy)
+          return finish(new Error('Network has no weights; load was cleared or canceled'));
+        if (state.weightsBusy || this.networkPreparing) return;
+        if (state.network.state === 'failed') return finish(new Error(state.network.message));
+        if (state.network.state === 'ready') finish();
+      };
+      signal?.addEventListener('abort', canceled, { once: true });
+      this.lifetime.signal.addEventListener('abort', disposed, { once: true });
+      unsubscribe = this.subscribe(check);
+      // subscribe currently does not notify immediately, but a synchronous initial callback is safe too.
+      if (settled) unsubscribe();
+      else check();
+    });
   }
 
   /** Create the renderer in `container` and start rendering. */
@@ -240,14 +298,7 @@ export class DemoController {
         view: this.state.view,
         settings: this.state.settings,
       });
-      this.pass.onStatus = (state, message) =>
-        this.set({
-          network: {
-            state,
-            message,
-            since: state === this.state.network.state ? this.state.network.since : performance.now(),
-          },
-        });
+      this.pass.onStatus = this.networkStatus;
 
       this.resizeObserver = new ResizeObserver(() => this.resize());
       this.resizeObserver.observe(container);
@@ -445,14 +496,18 @@ export class DemoController {
     if (this.state.backendId === 'reference-wgsl') await this.applyNetwork();
   }
 
-  /** Read a local model directory (from a webkitdirectory input). */
+  /**
+   * Import a local directory and attempt its build. Inspect weightsError/network for failure; use
+   * waitForNetworkReady afterwards to await the current network if this build was superseded.
+   */
   async loadDirectory(files: FileList | readonly File[]): Promise<void> {
-    await this.loadWeights(() => readModelDirectory(files, (message) => this.set({ weightsBusy: message })));
+    await this.loadWeights((onProgress) => readModelDirectory(files, onProgress));
   }
 
+  /** Generate/import synthetic weights and attempt their build; current readiness is a separate wait. */
   async loadSyntheticWeights(): Promise<void> {
-    await this.loadWeights(async () => {
-      this.set({ weightsBusy: 'generating synthetic weights (about 141 MiB)…' });
+    await this.loadWeights(async (onProgress) => {
+      onProgress('generating synthetic weights (about 141 MiB)…');
       // Let the message paint before the generator blocks the main thread for a second or two.
       await new Promise((done) => setTimeout(done, 30));
       return syntheticWeights();
@@ -461,21 +516,32 @@ export class DemoController {
 
   /** Drop the weights: NR off. */
   async clearWeights(): Promise<void> {
+    ++this.weightsRequest;
     this.weightsSource = null;
-    this.set({ weights: null, weightsError: null, view: 'off' });
+    this.set({ weights: null, weightsBusy: null, weightsError: null, view: 'off' });
     if (this.pass) this.pass.view = 'off';
     await this.applyNetwork();
   }
 
-  private async loadWeights(read: () => Promise<WeightsSource>): Promise<void> {
+  private async loadWeights(read: (onProgress: (message: string) => void) => Promise<WeightsSource>): Promise<void> {
+    if (this.disposed) return;
+    const request = ++this.weightsRequest;
     this.set({ weightsBusy: 'reading weights…', weightsError: null });
     try {
-      const source = await read();
+      const source = await read((message) => {
+        if (!this.disposed && request === this.weightsRequest) this.set({ weightsBusy: message });
+      });
+      if (this.disposed || request !== this.weightsRequest) return;
       this.weightsSource = source;
-      this.set({ weights: { kind: source.kind, label: source.label }, weightsBusy: null });
+      this.set({
+        weights: { kind: source.kind, label: source.label },
+        weightsBusy: null,
+        network: { state: 'building', message: 'preparing the network', since: performance.now() },
+      });
       if (this.state.view === 'off') this.setView('split');
       await this.applyNetwork();
     } catch (error) {
+      if (this.disposed || request !== this.weightsRequest) return;
       this.set({ weightsBusy: null, weightsError: error instanceof Error ? error.message : String(error) });
     }
   }
@@ -483,26 +549,32 @@ export class DemoController {
   /** (Re)build the pass's network for the current backend, frame mode and weights. */
   private async applyNetwork(): Promise<void> {
     const pass = this.pass;
-    if (!pass) return;
+    if (!pass || this.disposed) return;
     const request = ++this.networkRequest;
+    this.networkPreparing = true;
     const weights = this.weightsSource;
     const option = this.state.backends.find((candidate) => candidate.id === this.state.backendId);
     if (!weights || !option || option.reason !== null) {
-      this.releasePrepared();
       await pass.setNetwork(null);
+      if (this.disposed || request !== this.networkRequest) return;
+      this.releasePrepared();
+      this.networkPreparing = false;
       if (weights && option?.reason) {
         this.set({
           network: { state: 'failed', message: `${option.label}: ${option.reason}`, since: performance.now() },
         });
-      }
+      } else this.set({ network: { state: 'none', message: 'NR off: no weights loaded', since: performance.now() } });
       return;
     }
+    this.set({ network: { state: 'building', message: 'preparing the network', since: performance.now() } });
     try {
-      const builder = await this.networkBuilder(option.id, weights);
-      if (request !== this.networkRequest) return;
+      const builder = await this.networkBuilder(option.id, weights, request);
+      if (this.disposed || request !== this.networkRequest || !builder) return;
+      this.networkPreparing = false;
       await pass.setNetwork(builder);
     } catch (error) {
-      if (request !== this.networkRequest) return;
+      if (this.disposed || request !== this.networkRequest) return;
+      this.networkPreparing = false;
       const message = error instanceof Error ? error.message : String(error);
       console.error(error);
       this.set({ network: { state: 'failed', message, since: performance.now() } });
@@ -515,24 +587,38 @@ export class DemoController {
   }
 
   /** Load the weights for `backendId` once (kept across resizes and frame-mode changes) and return a builder. */
-  private async networkBuilder(backendId: NRBackendId, weights: WeightsSource): Promise<DlssNrNetworkBuilder> {
+  private async networkBuilder(
+    backendId: NRBackendId,
+    weights: WeightsSource,
+    request: number,
+  ): Promise<DlssNrNetworkBuilder | null> {
     if (this.prepared && (this.prepared.backendId !== backendId || this.prepared.weights !== weights)) {
       // Switching backends: the other backend's copy of the weights is no longer needed (the old network goes with
       // the next setNetwork; it does not own the shared model).
       await this.pass!.setNetwork(null);
+      if (this.disposed || request !== this.networkRequest) return null;
       this.releasePrepared();
     }
     const reference = this.referenceModule!;
     if (!this.prepared) {
       this.set({ network: { state: 'building', message: 'uploading weights', since: performance.now() } });
       if (backendId === 'reference-wgsl') {
-        const model = await reference.loadReferenceModel(this.renderer, weights.model, (message) =>
-          this.set({ network: { ...this.state.network, message } }),
-        );
+        const model = await reference.loadReferenceModel(this.renderer, weights.model, (message) => {
+          if (!this.disposed && request === this.networkRequest)
+            this.set({ network: { ...this.state.network, message } });
+        });
+        if (this.disposed || request !== this.networkRequest) {
+          model.dispose();
+          return null;
+        }
         this.prepared = { backendId, weights, model, dispose: () => model.dispose() };
       } else {
         // Parsed once and borrowed by every network (resizes do not reload it).
         const model = await nr.NRModel.load(weights.model);
+        if (this.disposed || request !== this.networkRequest) {
+          model.dispose();
+          return null;
+        }
         this.prepared = { backendId, weights, model, dispose: () => model.dispose() };
       }
     }
@@ -549,6 +635,9 @@ export class DemoController {
 
   dispose(): void {
     this.disposed = true;
+    ++this.weightsRequest;
+    ++this.networkRequest;
+    this.lifetime.abort();
     this.resizeObserver?.disconnect();
     this.renderer?.setAnimationLoop(null);
     this.pass?.dispose();
