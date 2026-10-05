@@ -3,9 +3,9 @@
 // plus `publish_e4_code` of src/matmul/packed-activation.js (`nrPublishE4CodeGemm`).
 //
 // The publication grid in TSL. Every helper is a layout `Fn` (a real WGSL `fn`, so kernels that call it stay small)
-// with the same name, arguments and arithmetic as its WGSL twin, written branch-free: both sides of each `if` are
-// computed and the result is picked with `pick` (WGSL `select`). Every helper is checked exhaustively on the GPU against the
-// reference's numerics fixture and the TS oracle (numerics.gpu.test.ts).
+// with the same publication semantics as its WGSL twin. Half publication branches around the general conversion
+// for ordinary finite values; the other helpers use `pick` (WGSL `select`). Every helper is checked exhaustively
+// on the GPU against the reference's numerics fixture and the TS oracle (numerics.gpu.test.ts).
 //
 // Rules this file keeps (design section 3):
 //   * No f16 type: everything is f32 or integer arithmetic on bit patterns.
@@ -26,6 +26,7 @@ import {
   max,
   min,
   round,
+  select,
   trunc,
   uint,
   uintBitsToFloat,
@@ -59,7 +60,7 @@ export const nrRoundShiftRightEven = Fn(([value, shift]: [TSLNode, TSLNode]) => 
 });
 
 /** IEEE binary16 bit pattern of an f32, round-to-nearest-even (`f16_bits`). */
-export const nrF16Bits = Fn(([value]: [TSLNode]) => {
+const nrF16BitsFallback = Fn(([value]: [TSLNode]) => {
   const bits = floatBitsToUint(value);
   const sign = bits.shiftRight(u(16)).bitAnd(u(0x8000));
   const exponent = bits.shiftRight(u(23)).bitAnd(u(0xff));
@@ -92,6 +93,24 @@ export const nrF16Bits = Fn(([value]: [TSLNode]) => {
       pick(halfExponent.lessThanEqual(i(0)), subnormal, normal),
     ),
   );
+}).setLayout({ name: 'nr_f16_bits_fallback', type: 'uint', inputs: [{ name: 'value', type: 'float' }] });
+
+/** Normal finite f32 inputs can round their exponent and mantissa together using integer carry. */
+export const nrF16Bits = Fn(([value]: [TSLNode]) => {
+  const bits = floatBitsToUint(value);
+  const magnitude = bits.bitAnd(u(0x7fffffff));
+  // f32 exponents 113..142 map to half exponents 1..30. Rounding the top interval may carry into infinity.
+  const normal = magnitude.greaterThanEqual(u(0x38800000)).and(magnitude.lessThan(u(0x47800000)));
+  const tieBit = magnitude.shiftRight(u(13)).bitAnd(u(1));
+  const rounded = magnitude
+    .add(u(0xfff))
+    .add(tieBit)
+    .shiftRight(u(13))
+    .sub(u(112 << 10));
+  const halfBits = bits.shiftRight(u(16)).bitAnd(u(0x8000)).bitOr(rounded);
+  // A caller's pick() can propagate uniformFlow into layout Fn generation. Force real control flow here:
+  // only the selected path should execute, even when this helper is first compiled inside a pick operand.
+  return select(normal, halfBits, nrF16BitsFallback(value)).context({ uniformFlow: false });
 }).setLayout({ name: 'nr_f16_bits', type: 'uint', inputs: [{ name: 'value', type: 'float' }] });
 
 /**
@@ -112,7 +131,17 @@ export const nrF16ToF32 = Fn(([bits]: [TSLNode]) => {
 }).setLayout({ name: 'nr_f16_to_f32', type: 'float', inputs: [{ name: 'bits', type: 'uint' }] });
 
 /** One publication to the half grid (`round_f16`). */
-export const nrRoundF16 = Fn(([value]: [TSLNode]) => nrF16ToF32(nrF16Bits(value))).setLayout({
+export const nrRoundF16 = Fn(([value]: [TSLNode]) => {
+  const bits = floatBitsToUint(value);
+  const magnitude = bits.bitAnd(u(0x7fffffff));
+  // Below the overflow midpoint (65520), clearing the low 13 bits leaves an exactly half-representable f32.
+  // Subnormal halves, signed zero, overflow and exceptional values keep the original conversion path.
+  const normal = magnitude.greaterThanEqual(u(0x38800000)).and(magnitude.lessThan(u(0x477ff000)));
+  const tieBit = magnitude.shiftRight(u(13)).bitAnd(u(1));
+  const rounded = magnitude.add(u(0xfff)).add(tieBit).bitAnd(u(0xffffe000));
+  const halfValue = uintBitsToFloat(bits.bitAnd(u(0x80000000)).bitOr(rounded));
+  return select(normal, halfValue, nrF16ToF32(nrF16BitsFallback(value))).context({ uniformFlow: false });
+}).setLayout({
   name: 'nr_round_f16',
   type: 'float',
   inputs: [{ name: 'value', type: 'float' }],
