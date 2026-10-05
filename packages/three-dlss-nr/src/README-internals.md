@@ -321,3 +321,24 @@ Dawn in Node has no `shader-f16` on the Windows dev machine, so the shim runs in
 - Fidelity suite: `DlssNrPass` exposes `renderTarget` (the rendered colour / velocity) and `outputTexture` (the
   presented NR image); render into an RGBA8 target with `renderer.setRenderTarget(target)` before `render()` to read
   the presented frame back (the GPU test does this).
+
+## Reference backend pipeline lifetime
+
+`ReferenceWgslBackend` retains kernel programs per GPU device, with separate program sets for ViT token padding and
+extra shader descriptors (name, source and ordered entry points). The pinned upstream compiler still specializes
+GEMM/window pipelines by module, layout, entry point and all override constants. A resize can introduce new
+specializations; returning to a previously prepared resolution reuses its pipelines. Concurrent creates share
+program preparation. Rejected program preparation is removed so it can be retried, and device loss removes this
+wrapper's program cache. The pinned upstream lookup-table builder has its own cache; a rejected SiLU-table
+initialization remains an upstream limitation and requires a fresh device. This wrapper does not modify that code.
+
+Only programs and upstream device lookup tables are shared. Each backend still creates its own tensors, graph,
+recorder and frame resources. Disposing one graph leaves sibling graphs and the cached programs usable. Treat
+`network.kernels`, `network.matmul` and `network.window` as shared internal objects: callbacks may record graph
+passes but must not mutate these programs. Supply custom kernels through `extraShaders` instead.
+
+Programs and pipeline specializations remain resident for the device lifetime; repeated distinct shader sets or
+resolutions can increase retained driver memory. The cache uses weak device keys and clears on device loss, but
+has no eviction limit for a live device. Activation memory remains per graph. Progress counts prepared specialized
+dispatches, including repeated uses and cache hits; it does not measure newly compiled pipelines. Recording-device
+unit tests verify graph/compiler reuse and ownership without executing shaders; GPU parity requires separate tests.
