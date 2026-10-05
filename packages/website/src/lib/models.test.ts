@@ -1,5 +1,6 @@
 import { execFileSync } from 'node:child_process';
 import { readFile } from 'node:fs/promises';
+import { fileURLToPath } from 'node:url';
 import * as THREE from 'three/webgpu';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { expect, it, vi } from 'vitest';
@@ -10,7 +11,7 @@ import { loadHead } from './studio';
 it('validates pinned sizes/hashes, embedded resources and glTF structure with Khronos validator', () => {
   const output = execFileSync(
     process.execPath,
-    [new URL('../../scripts/validate-demo-models.mjs', import.meta.url).pathname],
+    [fileURLToPath(new URL('../../scripts/validate-demo-models.mjs', import.meta.url))],
     { encoding: 'utf8' },
   );
   expect(output.match(/0 errors/g)).toHaveLength(4);
