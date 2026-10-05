@@ -113,7 +113,7 @@ function ViewportOverlay({ state, controller }: { state: DemoState; controller: 
       {building ? <BuildProgress state={state} /> : null}
       {state.modelLoading ? (
         <div className="pointer-events-none absolute right-2 bottom-2 text-xs">
-          <Badge>loading head…</Badge>
+          <Badge>loading scene…</Badge>
         </div>
       ) : null}
     </>
@@ -196,14 +196,14 @@ function HeadCredit({ modelId }: { modelId: string }) {
   const { attribution: a } = headModel(modelId);
   return (
     <p className="text-xs text-muted-foreground">
-      Head: <Link href={a.titleUrl}>&ldquo;{a.title}&rdquo;</Link> by <Link href={a.authorUrl}>{a.author}</Link>,
+      Scene: <Link href={a.titleUrl}>&ldquo;{a.title}&rdquo;</Link> by <Link href={a.authorUrl}>{a.author}</Link>,
       licensed under <Link href={a.licenseUrl}>{a.license}</Link>
       {a.source ? (
         <>
           . <Link href={a.sourceUrl}>{a.source}</Link>
         </>
       ) : null}
-      .
+      . {a.modifications}
     </p>
   );
 }
@@ -454,9 +454,41 @@ function Controls({ state, controller }: { state: DemoState; controller: DemoCon
           </div>
         ) : null}
         <p className="text-xs text-muted-foreground">
-          GPU time of the network per frame (timestamp queries), median of recent frames. Other GPU work on this machine
-          inflates it.
+          GPU time per frame (timestamp queries), median of recent frames. Upstream frame mode also includes input
+          preparation and composition. Other GPU work on this machine inflates it.
         </p>
+        <details className="text-xs text-muted-foreground">
+          <summary className="cursor-pointer rounded focus-visible:outline-2 focus-visible:outline-offset-2">
+            About backends and frame modes
+          </summary>
+          <div className="mt-2 space-y-2">
+            <p>
+              Both backends run the same network with your loaded model weights. TSL is the native Three.js shader
+              implementation; Reference WGSL runs the pinned upstream OpenDLSS-NR WebGPU implementation.
+            </p>
+            <p>
+              TSL uses float and integer arithmetic without requiring shader-f16. Reference WGSL requires shader-f16.
+              TSL needs at least 24 KiB of workgroup storage and 256 invocations per workgroup; Reference WGSL needs 32
+              KiB and 512. Both need eight storage-buffer bindings per shader stage and enough buffer capacity for the
+              model and resolution. Device support does not imply equal speed.
+            </p>
+            <p>
+              With Reference WGSL selected, the frame-mode switch chooses input preparation and output composition:
+              shared TSL frame kernels or upstream frame.wgsl. It keeps the Reference WGSL network selected.
+            </p>
+            <p>
+              Compare backends with the same model, scene, camera, resolution, NR settings and shared frame mode. In
+              shared frame mode, GPU time measures the network; upstream frame mode also times input preparation and
+              composition. Demo FPS includes scene rendering and presentation. GPU time needs timestamp-query support;
+              wall time includes waiting for submitted GPU work. Let recent samples refresh after changes, warm up first
+              and compare on an idle GPU.
+            </p>
+            <p>
+              Parity checks cover deterministic synthetic inputs and weights, including tested kernels and whole-network
+              cases. They do not establish identical results or performance for every device or model.
+            </p>
+          </div>
+        </details>
       </Section>
 
       <Section title="NR settings">
@@ -536,11 +568,24 @@ function Controls({ state, controller }: { state: DemoState; controller: DemoCon
       </Section>
 
       <Section title="Scene">
+        {state.modelError ? (
+          <div role="alert" className="space-y-1 text-xs text-red-500">
+            <p>{state.modelError.message}</p>
+            <button
+              type="button"
+              className="underline"
+              disabled={state.modelLoading}
+              onClick={() => void controller.setModel(state.modelError!.modelId)}
+            >
+              Retry scene
+            </button>
+          </div>
+        ) : null}
         <label className="grid grid-cols-[110px_1fr] items-center gap-2 text-xs">
-          <span>Head</span>
+          <span>Subject</span>
           <select
             className="rounded border border-border bg-background px-1 py-0.5"
-            value={state.modelId}
+            value={state.requestedModelId ?? state.modelId}
             onChange={(e) => void controller.setModel(e.target.value)}
           >
             {HEAD_MODELS.map((model) => (
