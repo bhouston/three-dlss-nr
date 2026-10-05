@@ -1,0 +1,121 @@
+{
+  "repository": "https://github.com/KhronosGroup/glTF-Sample-Assets",
+  "commit": "edc7c9e67c639d230715049ee31f9a96a6babbbe",
+  "preparation": "Python 3 with Pillow==12.3.0; see scripts/prepare-demo-models.py",
+  "models": [
+    {
+      "id": "toy-car",
+      "filename": "ToyCar.glb",
+      "byteLength": 5422412,
+      "sha256": "01a60862de55cd4b9f3acfab0b0def86451800f9c42467fcd61052c16cb9838c",
+      "modifications": "None: exact upstream GLB bytes.",
+      "sources": [
+        {
+          "name": "LICENSE.md",
+          "url": "https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/edc7c9e67c639d230715049ee31f9a96a6babbbe/Models/ToyCar/LICENSE.md",
+          "byteLength": 911,
+          "sha256": "6e7c41dba03a561a67197a5aba92219bcc462806d69d13d8aba1c0ccbe183253"
+        },
+        {
+          "name": "ToyCar.glb",
+          "url": "https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/edc7c9e67c639d230715049ee31f9a96a6babbbe/Models/ToyCar/glTF-Binary/ToyCar.glb",
+          "byteLength": 5422412,
+          "sha256": "01a60862de55cd4b9f3acfab0b0def86451800f9c42467fcd61052c16cb9838c"
+        }
+      ]
+    },
+    {
+      "id": "sheen-sofa",
+      "filename": "SheenWoodLeatherSofa.glb",
+      "byteLength": 10107912,
+      "sha256": "5349e042ad41e695e89f1110230c4ee0c75b2bc62ef830c7016be6ecf665bfb6",
+      "modifications": "None: exact upstream GLB bytes.",
+      "sources": [
+        {
+          "name": "LICENSE.md",
+          "url": "https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/edc7c9e67c639d230715049ee31f9a96a6babbbe/Models/SheenWoodLeatherSofa/LICENSE.md",
+          "byteLength": 933,
+          "sha256": "4ab306869a96deedf15b93b546e235aea897982a1151057e6dd9f61a3c70ea20"
+        },
+        {
+          "name": "SheenWoodLeatherSofa.glb",
+          "url": "https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/edc7c9e67c639d230715049ee31f9a96a6babbbe/Models/SheenWoodLeatherSofa/glTF-Binary/SheenWoodLeatherSofa.glb",
+          "byteLength": 10107912,
+          "sha256": "5349e042ad41e695e89f1110230c4ee0c75b2bc62ef830c7016be6ecf665bfb6"
+        }
+      ]
+    },
+    {
+      "id": "fox",
+      "filename": "Fox.glb",
+      "byteLength": 162852,
+      "sha256": "d97044e701822bac5a62696459b27d7b375aada5de8574ed4362edbba94771f7",
+      "modifications": "None: exact upstream GLB bytes.",
+      "sources": [
+        {
+          "name": "LICENSE.md",
+          "url": "https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/edc7c9e67c639d230715049ee31f9a96a6babbbe/Models/Fox/LICENSE.md",
+          "byteLength": 1061,
+          "sha256": "9ddaa2edd6a8f72117eec9709d38cd7d284f61f77752d342c32c828e61f78eae"
+        },
+        {
+          "name": "Fox.glb",
+          "url": "https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/edc7c9e67c639d230715049ee31f9a96a6babbbe/Models/Fox/glTF-Binary/Fox.glb",
+          "byteLength": 162852,
+          "sha256": "d97044e701822bac5a62696459b27d7b375aada5de8574ed4362edbba94771f7"
+        }
+      ]
+    },
+    {
+      "id": "sci-fi-helmet",
+      "filename": "SciFiHelmet.glb",
+      "byteLength": 9170980,
+      "sha256": "4aa6fccbe20591a5eaf54975775e509423447efd42e60232d4236463166f871c",
+      "modifications": "Repacked as self-contained GLB; PNG textures reduced to at most 1024\u00d71024 with Lanczos. Geometry/materials unchanged.",
+      "sources": [
+        {
+          "name": "LICENSE.md",
+          "url": "https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/edc7c9e67c639d230715049ee31f9a96a6babbbe/Models/SciFiHelmet/LICENSE.md",
+          "byteLength": 916,
+          "sha256": "a0b16736890a481ffdbfb1c9a10c7e24130edc6a370dd1d8d7baf4e5078e5e28"
+        },
+        {
+          "name": "SciFiHelmet.gltf",
+          "url": "https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/edc7c9e67c639d230715049ee31f9a96a6babbbe/Models/SciFiHelmet/glTF/SciFiHelmet.gltf",
+          "byteLength": 4461,
+          "sha256": "4b9e64c5337ddaba5b44821d76786bcad3b5b78f877cf034ec6163dc8baca35a"
+        },
+        {
+          "name": "SciFiHelmet.bin",
+          "url": "https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/edc7c9e67c639d230715049ee31f9a96a6babbbe/Models/SciFiHelmet/glTF/SciFiHelmet.bin",
+          "byteLength": 3643848,
+          "sha256": "6a7af42896359f8e0d9ba65260cbb7b1a1d36aa787439d3775a48aba1f9a25ba"
+        },
+        {
+          "name": "SciFiHelmet_BaseColor.png",
+          "url": "https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/edc7c9e67c639d230715049ee31f9a96a6babbbe/Models/SciFiHelmet/glTF/SciFiHelmet_BaseColor.png",
+          "byteLength": 7841138,
+          "sha256": "bda08dd029775ea0964d5721b779a639da091222eaa750233ba34e01e3eeace2"
+        },
+        {
+          "name": "SciFiHelmet_MetallicRoughness.png",
+          "url": "https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/edc7c9e67c639d230715049ee31f9a96a6babbbe/Models/SciFiHelmet/glTF/SciFiHelmet_MetallicRoughness.png",
+          "byteLength": 9488811,
+          "sha256": "f38f025af3201697679e2a04ba4cf01b4506e68ce4e0e0f09c268a7dfb80b2c3"
+        },
+        {
+          "name": "SciFiHelmet_Normal.png",
+          "url": "https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/edc7c9e67c639d230715049ee31f9a96a6babbbe/Models/SciFiHelmet/glTF/SciFiHelmet_Normal.png",
+          "byteLength": 5389165,
+          "sha256": "437c034b60900b503bb41be3328011ab3b7602c8454f8eebcab98929ea25fe99"
+        },
+        {
+          "name": "SciFiHelmet_AmbientOcclusion.png",
+          "url": "https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/edc7c9e67c639d230715049ee31f9a96a6babbbe/Models/SciFiHelmet/glTF/SciFiHelmet_AmbientOcclusion.png",
+          "byteLength": 3919556,
+          "sha256": "95823e77b0a6e45308b53be4fdf1b7a7b6ac085c190dc1c5ef47097d0e35eb2f"
+        }
+      ]
+    }
+  ]
+}

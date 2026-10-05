@@ -8,7 +8,8 @@
     "dev": "vite dev --port 3300 --strictPort",
     "start": "node .output/server/index.mjs",
     "preview": "vite preview",
-    "test": "vitest run --root ../.. --project unit packages/website"
+    "test": "vitest run --root ../.. --project unit packages/website",
+    "validate:models": "node scripts/validate-demo-models.mjs"
   },
   "dependencies": {
     "@tanstack/nitro-v2-vite-plugin": "1.155.0",
@@ -26,6 +27,7 @@
     "@types/react-dom": "^19.2.0",
     "@vitejs/plugin-react": "^5.1.2",
     "fidelity-suite": "workspace:*",
+    "gltf-validator": "2.0.0-dev.3.10",
     "tailwindcss": "^4.1.18",
     "vite": "^8.1.3"
   }
