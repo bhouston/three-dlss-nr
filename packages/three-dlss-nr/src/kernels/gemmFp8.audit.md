@@ -43,7 +43,7 @@ the TSL has no counterpart for those branches. JS-time constants replace all fla
 | 22-35 `publish_e4_code`                                                                 | NaN -> 0; saturate at 448; `round(m * 512)` below 2^-6; else RNE on the f32 bits, `(rounded >> 20) - 960`; sign bit only if `value < 0` (so -0 -> 0x00)                                                                                | `nrPublishE4CodeGemm` (`tsl/numerics.ts`): the same operations on the same bits. `numerics.gpu.test.ts` tests it on every half and 2^20 random f32 patterns.                                                                                                                                                                                                                                                                                                        |
 | 36-48 `MatmulParams`, 53 `params`                                                       | only `params.rows` is still read (`if (params.rows == 0u) { return; }`, which keeps the binding alive)                                                                                                                                 | no uniform. `createGemmFp8` rejects `rows < 1`, so the early return can never fire.                                                                                                                                                                                                                                                                                                                                                                                 |
 | 49-52 bindings 0-3                                                                      | input words, weight stage words, output words, residual words                                                                                                                                                                          | `nr_input`, `nr_weights` (read-only), `nr_output` / `nr_outputHalf` (read_write), `nr_residual` + `nr_scale` (read-only, only with a residual), `nr_operands`, `nr_silu`. `kernel()` binds each attribute once (R7).                                                                                                                                                                                                                                                |
-| 55-58 `tile_a/b/ea/eb`                                                                  | `vec4<f16>` tiles: A `[32 rows][8 quads of k]`, B `[32 columns][9]` (padded), exponents alike                                                                                                                                          | `nr_tile_a` / `nr_tile_ea` (`vec4<f32>` / `vec4<i32>`, `[row * 8 + quad]`, the same layout) and `nr_tile_b` / `nr_tile_eb` (`[quad * 32 + column]`, k-major instead of padded). This is layout only. Named so that the WGSL of same-shape kernels is identical (R15).                                                                                                                                                                                               |
+| 55-58 `tile_a/b/ea/eb`                                                                  | `vec4<f16>` tiles: A `[32 rows][8 quads of k]`, B `[32 columns][9]` (padded), exponents alike                                                                                                                                          | `nr_tile_a` / `nr_tile_ea` (`vec4<f32>` / `vec4<i32>`, `[row * 9 + quad]`, with one padding slot per row) and `nr_tile_b` / `nr_tile_eb` (`[quad * 36 + column + floor(column / 8)]`, k-major with one padding slot per eight columns). This is layout only. Named so that the WGSL of same-shape kernels is identical (R15).                                                                                                                                       |
 | 60-63 `packed_byte`, 65-78 `decode_e4m3`, 132-138 `mp_cubic_silu`, 140-155 `fp8_domain` | dead in the composed kernel: `b = decode_e4m3(...)` (line 1229) is assigned and never read; SiLU goes through the table; `fp8_domain` is only reached in the half variant under flag 32, which the graph never sets with a half output | none.                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
 | 80-96 `packed_weight_index`                                                             | MMA fragment order of the model file                                                                                                                                                                                                   | `weightIndexInTile(4q, column)` plus `kTile * n * 32`: the same bit fields, with the K-tile term moved out of the loop. `packedWeightIndex` in the oracle (checked against model.js) is the CPU twin.                                                                                                                                                                                                                                                               |
 | 98-103, 114-119                                                                         | expert-interleaved and inverse-chained indices (flags 64, 128)                                                                                                                                                                         | dead; none.                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
@@ -79,7 +79,7 @@ the TSL has no counterpart for those branches. JS-time constants replace all fla
 | B: `weight_index = packed_weight_index(k, output_column, LAYOUT_WEIGHT_MATRIX_CHANNELS)`; `byte_offset = LAYOUT_WEIGHT_BYTE_OFFSET (+ batch * K * WMC) + weight_index`; one word, plus a second word when `byte_offset % 4 != 0`; guarded by `column < N` (folded when `N % 32 == 0`)                                                          | one word at `(weightIndexInTile + batch * k * n + kTile * n * 32) >> 2`. With offset 0, the index of a 4-aligned k is 4-aligned (its low 2 bits are `k & 3`), so the unaligned path is unreachable. The column guard is emitted only when `n % 32 != 0`, and zero bytes then decode to 0 / -100 as the reference's zero word does.                                                                                                                                                                                                       |
 | A: `packed_index0 = input_row * MATMUL_K + chained(k0)`; `packed_index2 = ... chained(k0 + 2)`; words guarded by `input_row < MATMUL_ROWS && k < MATMUL_K`; batched: `input_row * LAYOUT_INPUT_MATRIX_CHANNELS + (broadcast ? 0 : batch * K)`                                                                                                  | `aByte = row * inputChannels (+ batch * k unless broadcast) + 16 (q >> 2) + 2 (q & 3) + kTile * 32`, words at `aByte >> 2` and `(aByte + 8) >> 2`, guarded by `row < rows` (zero words otherwise). The non-batched variant uses `MATMUL_K` as the stride because graph.js picks it only when `input.channels == k`, so the strides agree.                                                                                                                                                                                                |
 | `shift = (packed_index % 4 + part % 2) * 8`; `a_metadata = weight_metadata[(word >> shift) & 255]`                                                                                                                                                                                                                                             | bytes `(low >> s)`, `(low >> s + 8)`, `(high >> s)`, `(high >> s + 8)` with `s = (aByte & 3) * 8` (0 or 16), then `nr_operands[code]`.                                                                                                                                                                                                                                                                                                                                                                                                   |
-| `loaded_a[part] = a_metadata.x; ea[part] = a_metadata.y; loaded_b = metadata.x; eb = metadata.y`; stores; `workgroupBarrier()`                                                                                                                                                                                                                 | `nr_tile_a[t] = vec4(values)`, `nr_tile_ea[t] = ivec4(exponents)`, B likewise at `q * 32 + column`; `workgroupBarrier()`.                                                                                                                                                                                                                                                                                                                                                                                                                |
+| `loaded_a[part] = a_metadata.x; ea[part] = a_metadata.y; loaded_b = metadata.x; eb = metadata.y`; stores; `workgroupBarrier()`                                                                                                                                                                                                                 | `nr_tile_a[row * 9 + q] = vec4(values)`, exponents at the same slot, B likewise at `q * 36 + column + floor(column / 8)`; `workgroupBarrier()`.                                                                                                                                                                                                                                                                                                                                                                                          |
 | `quad0/1 = quad_fdpa_16_0(...)`, then `quad_fdpa_16_16(...)` (flags 2048/4096 branches dead)                                                                                                                                                                                                                                                   | `Loop half` 0, 1 over all 8 accumulators.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
 | partition: `width = 1024/512/256` by flag; `if (flags & 57344 && ((k_base + 32) % width == 0 \|\| k_base + 32 >= K))`: `part = k_base < width ? sums : round_accumulator(part + sums)`; `sums = 0`                                                                                                                                             | `If((kTile + 1) * 32 % span == 0 \|\| kTile + 1 == kTiles)`: `part = pick(kTile * 32 < span, acc, nrRoundF16(part + acc))`; `acc = 0`. Emitted only when `partition != 0`. `part + acc` of two halves rounded once to half equals the hardware's correctly rounded half add, because f32 has p >= 2p+2 for half's p (innocuous double rounding).                                                                                                                                                                                         |
 | `workgroupBarrier()` at the end of the K step                                                                                                                                                                                                                                                                                                  | same.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
@@ -110,97 +110,36 @@ the TSL has no counterpart for those branches. JS-time constants replace all fla
    workgroups store half outputs past the tensor. WebGPU's robust access then clamps or discards those stores, so
    they can land on the last element. This first happens at a 1920x1152 field (2,211,840 rows, 69120 row tiles) in
    level-0 qkv and dual GEMMs. Our kernel guards rows whenever a tile can be partial or out of range.
-2. **Workgroup memory** is `f32` / `i32` (16 KiB) instead of `f16` (8.7 KiB), and B is k-major instead of padded.
+2. **Workgroup memory** is `f32` / `i32` (18 KiB with padding) instead of `f16` (8.7 KiB), and B is k-major with one extra slot per eight columns.
    This changes layout only.
 3. **Operands are not scaled by 4.** The reference relies on `|w| <= 9` (model.js) for exact half products. Our f32
    products are exact for any E4 weight, so the results differ only for a weight the reference itself refuses to load.
 
-## Shared-memory padding evaluation (#7)
+## Proposed shared-memory padding (#7)
 
-[Issue #7](https://github.com/bhouston/three-dlss-nr/issues/7) isolates the padding proposal in
+This independent implementation isolates the addressing proposal discovered in
 [PR #4](https://github.com/bhouston/three-dlss-nr/pull/4), head
-`458384d776c98e0c75bea855319561fc50b110f6`. **Retain the unpadded production layout.** An independently implemented
-padding-only candidate regressed most measured shapes on the available Apple M3. This does not establish whether
-padding helps other GPU architectures; measurements there are still needed before adopting it.
+`458384d776c98e0c75bea855319561fc50b110f6`, for
+[issue #7](https://github.com/bhouston/three-dlss-nr/issues/7). It changes physical shared-memory addresses while
+retaining logical operands, reductions, global addressing, partial-tile guards, formats, and rounding.
 
-### Addressing and storage audit
+A values and exponents use `A[row * 9 + q]`; B values and exponents use
+`B[q * 36 + column + floor(column / 8)]`. Every logical operand has a unique physical data slot; the extra
+slots are not consumed. Four 288-element vec4 arrays occupy 18 KiB, within the actual TSL network requirement
+of 24 KiB (`NR_MIN_WORKGROUP_STORAGE = 24576`). The reference backend separately requires 32 KiB.
 
-Each K step loads 256 logical `vec4` words per operand: `t = local_index + 128 * j`, `j = 0, 1`;
-`q = t % 8`, `outer = floor(t / 8)`. The producer/consumer mappings were:
+Each producer has `t = local_index + 128 * j` (`j = 0, 1`), `q = t % 8`, and `outer = floor(t / 8)`:
+`outer` is A's row and B's column. Consumers use row `2 * local.y + r` (`r = 0, 1`) and column
+`4 * local.x + c` (`c = 0..3`) with the same slot formulas. Enumerating all 256 producers and 8192 consumer
+pairs confirms unique producer addresses and matching operands. A slot 8 per nine-slot row is unused;
+B slots 8, 17, 26 and 35 per 36-slot quad are unused. This common mapping applies to every role, batch,
+broadcast, folded row group and partial tile; their global addresses, guards and zero fills are unchanged.
+Generated WGSL declares exactly four arrays of 288 16-byte vec4 elements: `4 * 288 * 16 = 18432` bytes.
 
-| Tile                   | Current physical slot | Evaluated physical slot               | Consumer logical coordinates           |
-| ---------------------- | --------------------- | ------------------------------------- | -------------------------------------- |
-| A values and exponents | `row * 8 + q`         | `row * 9 + q`                         | `row = 2 * local.y + r`, `r = 0, 1`    |
-| B values and exponents | `q * 32 + column`     | `q * 36 + column + floor(column / 8)` | `column = 4 * local.x + c`, `c = 0..3` |
-
-The producer uses `outer` for A's row and B's column. Enumerating all 256 producers and all 8192 consumer pairs
-(`16 * 8 * 2 * 4 * 8`) confirms each consumer reads the matching producer; no padding is consumed. A's slot 8 in
-each row is unused; B's slots 8, 17, 26 and 35 in each q slice are unused. Both mappings have 256 unique data slots
-in 288 allocated slots. The candidate changes only these workgroup indices and array lengths. It leaves global
-input/weight addressing, batch/broadcast offsets, partial-tile zero fills, folded row groups, output guards,
-barriers, two-pass exponent/sum calculation, partition boundaries, accumulation order and numerical helpers intact.
-The same mappings serve E4, half and dual outputs, both residual formats and SiLU; there are no role-specific tile
-layouts.
-
-Generated WGSL declared four workgroup arrays of 288 `vec4<f32>` / `vec4<i32>` elements. Each element occupies
-16 bytes, so total storage is `4 * 288 * 16 = 18432` bytes (18 KiB), versus 16384 bytes today. This fits the TSL
-network's actual `NR_MIN_WORKGROUP_STORAGE = 24576` bytes (24 KiB), with no limit change. PR #4's claim of an
-existing 32 KiB requirement describes the reference backend, not this TSL minimum. The pinned upstream
-`matmul/padded.js` pads its packed B exponent array to nine words per column; this candidate adapts that idea to
-our different `vec4` layout and 2-row / 4-column invocation mapping. Bank behavior is hardware-dependent, and
-extra storage can also affect occupancy.
-
-### Fresh measurements
-
-The available machine was a MacBook Air with Apple M3 and 24 GB RAM, using Node 26.3.0, pnpm 11.27.0 and Dawn's
-Metal backend (adapter description: `Metal driver on macOS Version 27.0.1 (Build 26A434)`). GPU timestamp queries
-were available. Other implementation agents paused GPU work for this measurement slot; unrelated system GPU
-activity is not controlled. The unchanged `gemm.bench.gpu.test.ts` benchmark uses deterministic synthetic weights,
-a compile/warm-up dispatch followed by 25 trials of four dispatches per shape, reporting the minimum per-dispatch
-GPU time. These are kernel timings, not full-network frame times. Two baseline and two candidate runs were
-alternated B/P/B/P using identical inputs and settings.
-
-| Shape                                 | Baseline 1 ms | Padded 1 ms | Baseline 2 ms | Padded 2 ms | Change in mean of minima |
-| ------------------------------------- | ------------: | ----------: | ------------: | ----------: | -----------------------: |
-| L0 expand 32→128 SiLU                 |         9.634 |       9.798 |         9.667 |       9.798 |                   +1.53% |
-| L0 contract 128→32 dual f16 skip      |         9.355 |       9.552 |         9.388 |       9.535 |                   +1.84% |
-| L0 qkv 32→96 half                     |         7.242 |       7.209 |         7.127 |       7.209 |                   +0.34% |
-| L0 projection 32 dual f16 skip        |         2.900 |       3.031 |         2.900 |       3.015 |                   +4.24% |
-| L1 expert expand 64 (2×128)           |         9.191 |       9.290 |         9.191 |       9.290 |                   +1.08% |
-| L1 expert contract (2×128→32)         |         4.473 |       4.424 |         4.473 |       4.424 |                   −1.10% |
-| L1 qkv 64→192                         |         6.849 |       6.898 |         6.849 |       6.898 |                   +0.72% |
-| L3 expert expand 256 (8×128)          |         8.782 |       8.913 |         8.782 |       8.913 |                   +1.49% |
-| L4 split layer0 512                   |         2.212 |       2.228 |         2.212 |       2.228 |                   +0.72% |
-| ViT contract 4096→1024 p1024          |         3.228 |       3.277 |         3.228 |       3.277 |                   +1.52% |
-| Adapter f16 16→32 (unchanged control) |         2.949 |       2.949 |         2.949 |       2.949 |                    0.00% |
-| Head f16 32→4 (unchanged control)     |         0.639 |       0.639 |         0.639 |       0.639 |                    0.00% |
-
-Small differences, especially below 1%, should not be treated as statistically established wins or regressions:
-this is a minimum-of-trials benchmark with two runs per variant. The isolated expert-contract gain does not
-justify universal padding; the repeatable projection regression and larger storage requirement favor retaining
-the current layout on this hardware. NVIDIA/AMD measurements and whole-network timings were not collected.
-
-To reproduce, begin from baseline `78347756633cff223d79ed35c9f03a60a8273f05`, install the pinned dependencies, and run:
-
-```sh
-pnpm install --frozen-lockfile
-NR_BENCH=1 pnpm exec vitest run --project gpu packages/three-dlss-nr/src/kernels/gemm.bench.gpu.test.ts --silent=false
-```
-
-For the candidate, independently replace only the four tile lengths and producer/consumer slot formulas using
-the table above, then alternate the same benchmark command with the baseline on an idle GPU. The source proposal
-can be inspected without checking out its branch:
-
-```sh
-git-dedup fetch origin pull/4/head:refs/remotes/origin/pr-4-reference
-git-dedup show 458384d776c98e0c75bea855319561fc50b110f6:packages/three-dlss-nr/src/kernels/gemmFp8.ts
-```
-
-Do not include PR #4's separate half-rounding changes in this experiment. The production kernel and committed
-WGSL snapshots remain unchanged. Candidate GPU validation passed all 23 CPU-oracle role comparisons, partial
-columns, large folded-row coverage and WGSL checks (49/50 tests overall, with candidate snapshots updated only
-locally). Its reference comparison failed at one half value in `dense contract 128->32 dual, f16 skip`: element
-212 was `0x6457` versus reference `0x6458`. The unchanged baseline reproduced exactly the same discrepancy,
-so this is an existing Metal/reference limitation, not evidence against the candidate's addressing. No
-candidate whole-network parity claim is made. Cross-GPU evaluation and candidate whole-network validation remain
-future work required before reconsidering padding adoption.
+This adapts the pinned upstream `matmul/padded.js` idea to TSL's 2-row / 4-column invocation mapping.
+The proposal needs independent idle-GPU measurements before adoption: bank behavior and occupancy are
+hardware-dependent. The maintainer was using the local GPU during evaluation, so all local timing observations
+were discarded as performance evidence. Local tests validate correctness only; no speedup or regression claim
+is made. Keep the PR in draft until another machine verifies kernel and full-network parity and demonstrates
+that padding does not introduce a material performance regression. See `gemm.bench.gpu.test.ts` for the existing
+synthetic GEMM timing harness, and the shared validation handoff for benchmark and merge gates.
