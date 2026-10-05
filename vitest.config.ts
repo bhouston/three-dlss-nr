@@ -82,6 +82,8 @@ export default defineConfig({
           // The whole network (network.*.gpu.test.ts): minutes of kernel compilation and full-GPU frames. Its own
           // project with a later group order, so it runs after the other GPU files instead of starving them.
           name: 'gpu-network',
+          // Full-network files share the GPU; run them serially to avoid starving reference rebuilds.
+          fileParallelism: false,
           environment: 'webgpu-node',
           environmentOptions: { webgpuNode: { dawnOptions: dawnOptions() } },
           setupFiles: [`${root}packages/three-dlss-nr/test/setup/fetchShim.ts`],

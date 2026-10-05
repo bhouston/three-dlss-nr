@@ -7,6 +7,7 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 
 import type { HeadModel } from './models';
+import { ModelResources } from './modelResources';
 
 export interface Studio {
   scene: any;
@@ -62,74 +63,74 @@ export interface LoadedHead {
 
 /** Load a registry entry: the glTF scene, its maps, a skin material, scaled and centred at the origin. */
 export async function loadHead(entry: HeadModel): Promise<LoadedHead> {
-  const hints = entry.loader ?? {};
-  const base = entry.url.slice(0, entry.url.lastIndexOf('/') + 1);
-  const textureLoader = new THREE.TextureLoader();
-  const loadMap = async (file: string | undefined, colorSpace: string) => {
-    if (!file) return null;
-    const map = await textureLoader.loadAsync(base + file);
-    map.flipY = hints.flipY ?? false;
-    map.colorSpace = colorSpace;
-    map.anisotropy = 8;
-    return map;
-  };
-  const [gltf, map, normalMap, specularMap] = await Promise.all([
-    new GLTFLoader().loadAsync(entry.url),
-    loadMap(hints.textures?.map, THREE.SRGBColorSpace),
-    loadMap(hints.textures?.normalMap, THREE.NoColorSpace),
-    loadMap(hints.textures?.specularMap, THREE.NoColorSpace),
-  ]);
-  const root = gltf.scenes[hints.sceneIndex ?? 0] ?? gltf.scene;
+  const resources = new ModelResources();
+  try {
+    const hints = entry.loader ?? {};
+    const base = entry.url.slice(0, entry.url.lastIndexOf('/') + 1);
+    const textureLoader = new THREE.TextureLoader();
+    const loadMap = async (file: string | undefined, colorSpace: string) => {
+      if (!file) return null;
+      const map = await textureLoader.loadAsync(base + file);
+      resources.texture(map);
+      map.flipY = hints.flipY ?? false;
+      map.colorSpace = colorSpace;
+      map.anisotropy = 8;
+      return map;
+    };
+    const [gltf, map, normalMap, specularMap] = await Promise.all([
+      new GLTFLoader().loadAsync(entry.url).then((loaded: any) => {
+        resources.gltf(loaded);
+        return loaded;
+      }),
+      loadMap(hints.textures?.map, THREE.SRGBColorSpace),
+      loadMap(hints.textures?.normalMap, THREE.NoColorSpace),
+      loadMap(hints.textures?.specularMap, THREE.NoColorSpace),
+    ]);
+    const root = gltf.scenes[hints.sceneIndex ?? 0] ?? gltf.scene;
 
-  const materials: any[] = [];
-  if (hints.textures) {
-    const material = new THREE.MeshPhysicalNodeMaterial({
-      color: 0xffffff,
-      map,
-      normalMap,
-      roughness: hints.roughness ?? 0.55,
-      metalness: 0,
-    });
-    if (normalMap) material.normalScale.set(hints.normalScale ?? 1, hints.normalScale ?? 1);
-    if (specularMap) material.specularIntensityNode = textureNode(specularMap).r.mul(1.5);
-    material.sheen = 0.15;
-    material.sheenRoughness = 0.6;
-    material.sheenColor = new THREE.Color(0.9, 0.7, 0.6);
-    materials.push(material);
-    root.traverse((child: any) => {
-      if (child.isMesh) child.material = material;
-    });
-  }
-
-  const box = new THREE.Box3().setFromObject(root);
-  const size = box.getSize(new THREE.Vector3());
-  const centre = box.getCenter(new THREE.Vector3());
-  if (![size.x, size.y, size.z].every(Number.isFinite) || size.length() <= 0) {
-    throw new Error(`Scene "${entry.label}" has no finite visible bounds`);
-  }
-  const scale =
-    hints.size === undefined
-      ? (hints.height ?? 2) / Math.max(size.y, 1e-6)
-      : hints.size / Math.max(size.x, size.y, size.z);
-  const object = new THREE.Group();
-  object.name = entry.id;
-  root.position.sub(centre);
-  object.add(root);
-  object.scale.setScalar(scale);
-  object.rotation.y = hints.rotationY ?? 0;
-
-  return {
-    object,
-    radius: (size.length() * scale) / 2,
-    dispose() {
-      root.traverse((child: any) => {
-        if (child.isMesh) {
-          child.geometry.dispose();
-          if (!materials.includes(child.material)) child.material.dispose?.();
-        }
+    if (hints.textures) {
+      const material = new THREE.MeshPhysicalNodeMaterial({
+        color: 0xffffff,
+        map,
+        normalMap,
+        roughness: hints.roughness ?? 0.55,
+        metalness: 0,
       });
-      for (const material of materials) material.dispose();
-      for (const texture of [map, normalMap, specularMap]) texture?.dispose();
-    },
-  };
+      resources.material(material);
+      if (normalMap) material.normalScale.set(hints.normalScale ?? 1, hints.normalScale ?? 1);
+      if (specularMap) material.specularIntensityNode = textureNode(specularMap).r.mul(1.5);
+      material.sheen = 0.15;
+      material.sheenRoughness = 0.6;
+      material.sheenColor = new THREE.Color(0.9, 0.7, 0.6);
+      root.traverse((child: any) => {
+        if (child.isMesh) child.material = material;
+      });
+    }
+
+    const box = new THREE.Box3().setFromObject(root);
+    const size = box.getSize(new THREE.Vector3());
+    const centre = box.getCenter(new THREE.Vector3());
+    if (![size.x, size.y, size.z].every(Number.isFinite) || size.length() <= 0) {
+      throw new Error(`Scene "${entry.label}" has no finite visible bounds`);
+    }
+    const scale =
+      hints.size === undefined
+        ? (hints.height ?? 2) / Math.max(size.y, 1e-6)
+        : hints.size / Math.max(size.x, size.y, size.z);
+    const object = new THREE.Group();
+    object.name = entry.id;
+    root.position.sub(centre);
+    object.add(root);
+    object.scale.setScalar(scale);
+    object.rotation.y = hints.rotationY ?? 0;
+
+    return {
+      object,
+      radius: (size.length() * scale) / 2,
+      dispose: () => resources.dispose(),
+    };
+  } catch (error) {
+    resources.dispose();
+    throw error;
+  }
 }

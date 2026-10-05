@@ -120,6 +120,7 @@ export class DemoController {
   private container: HTMLElement | null = null;
   private disposed = false;
   private networkRequest = 0;
+  private modelRequest = 0;
 
   constructor() {
     this.state = {
@@ -405,11 +406,13 @@ export class DemoController {
   }
 
   async setModel(id: string): Promise<void> {
+    if (this.disposed) return;
     const entry = headModel(id);
+    const request = ++this.modelRequest;
     this.set({ requestedModelId: id, modelLoading: true, modelError: null });
     try {
       const head = await loadHead(entry);
-      if (this.disposed || this.state.requestedModelId !== id) {
+      if (this.disposed || request !== this.modelRequest) {
         head.dispose();
         return;
       }
@@ -424,11 +427,11 @@ export class DemoController {
       // A new subject is a camera cut for the temporal history.
       this.resetCamera();
     } catch (error) {
-      if (!this.disposed && this.state.requestedModelId === id) {
+      if (!this.disposed && request === this.modelRequest) {
         this.set({ modelError: { modelId: id, message: `Could not load ${entry.label}: ${String(error)}` } });
       }
     } finally {
-      if (this.state.requestedModelId === id) this.set({ modelLoading: false, requestedModelId: null });
+      if (!this.disposed && request === this.modelRequest) this.set({ modelLoading: false, requestedModelId: null });
     }
   }
 
