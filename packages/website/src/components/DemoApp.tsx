@@ -113,7 +113,7 @@ function ViewportOverlay({ state, controller }: { state: DemoState; controller: 
       {building ? <BuildProgress state={state} /> : null}
       {state.modelLoading ? (
         <div className="pointer-events-none absolute right-2 bottom-2 text-xs">
-          <Badge>loading head…</Badge>
+          <Badge>loading scene…</Badge>
         </div>
       ) : null}
     </>
@@ -196,14 +196,14 @@ function HeadCredit({ modelId }: { modelId: string }) {
   const { attribution: a } = headModel(modelId);
   return (
     <p className="text-xs text-muted-foreground">
-      Head: <Link href={a.titleUrl}>&ldquo;{a.title}&rdquo;</Link> by <Link href={a.authorUrl}>{a.author}</Link>,
+      Scene: <Link href={a.titleUrl}>&ldquo;{a.title}&rdquo;</Link> by <Link href={a.authorUrl}>{a.author}</Link>,
       licensed under <Link href={a.licenseUrl}>{a.license}</Link>
       {a.source ? (
         <>
           . <Link href={a.sourceUrl}>{a.source}</Link>
         </>
       ) : null}
-      .
+      . {a.modifications}
     </p>
   );
 }
@@ -568,11 +568,24 @@ function Controls({ state, controller }: { state: DemoState; controller: DemoCon
       </Section>
 
       <Section title="Scene">
+        {state.modelError ? (
+          <div role="alert" className="space-y-1 text-xs text-red-500">
+            <p>{state.modelError.message}</p>
+            <button
+              type="button"
+              className="underline"
+              disabled={state.modelLoading}
+              onClick={() => void controller.setModel(state.modelError!.modelId)}
+            >
+              Retry scene
+            </button>
+          </div>
+        ) : null}
         <label className="grid grid-cols-[110px_1fr] items-center gap-2 text-xs">
-          <span>Head</span>
+          <span>Subject</span>
           <select
             className="rounded border border-border bg-background px-1 py-0.5"
-            value={state.modelId}
+            value={state.requestedModelId ?? state.modelId}
             onChange={(e) => void controller.setModel(e.target.value)}
           >
             {HEAD_MODELS.map((model) => (
