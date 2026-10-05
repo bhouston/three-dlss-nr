@@ -114,3 +114,92 @@ the TSL has no counterpart for those branches. JS-time constants replace all fla
    This changes layout only.
 3. **Operands are not scaled by 4.** The reference relies on `|w| <= 9` (model.js) for exact half products. Our f32
    products are exact for any E4 weight, so the results differ only for a weight the reference itself refuses to load.
+
+## Shared-memory padding evaluation (#7)
+
+[Issue #7](https://github.com/bhouston/three-dlss-nr/issues/7) isolates the padding proposal in
+[PR #4](https://github.com/bhouston/three-dlss-nr/pull/4), head
+`458384d776c98e0c75bea855319561fc50b110f6`. **Retain the unpadded production layout.** An independently implemented
+padding-only candidate regressed most measured shapes on the available Apple M3. This does not establish whether
+padding helps other GPU architectures; measurements there are still needed before adopting it.
+
+### Addressing and storage audit
+
+Each K step loads 256 logical `vec4` words per operand: `t = local_index + 128 * j`, `j = 0, 1`;
+`q = t % 8`, `outer = floor(t / 8)`. The producer/consumer mappings were:
+
+| Tile                   | Current physical slot | Evaluated physical slot               | Consumer logical coordinates           |
+| ---------------------- | --------------------- | ------------------------------------- | -------------------------------------- |
+| A values and exponents | `row * 8 + q`         | `row * 9 + q`                         | `row = 2 * local.y + r`, `r = 0, 1`    |
+| B values and exponents | `q * 32 + column`     | `q * 36 + column + floor(column / 8)` | `column = 4 * local.x + c`, `c = 0..3` |
+
+The producer uses `outer` for A's row and B's column. Enumerating all 256 producers and all 8192 consumer pairs
+(`16 * 8 * 2 * 4 * 8`) confirms each consumer reads the matching producer; no padding is consumed. A's slot 8 in
+each row is unused; B's slots 8, 17, 26 and 35 in each q slice are unused. Both mappings have 256 unique data slots
+in 288 allocated slots. The candidate changes only these workgroup indices and array lengths. It leaves global
+input/weight addressing, batch/broadcast offsets, partial-tile zero fills, folded row groups, output guards,
+barriers, two-pass exponent/sum calculation, partition boundaries, accumulation order and numerical helpers intact.
+The same mappings serve E4, half and dual outputs, both residual formats and SiLU; there are no role-specific tile
+layouts.
+
+Generated WGSL declared four workgroup arrays of 288 `vec4<f32>` / `vec4<i32>` elements. Each element occupies
+16 bytes, so total storage is `4 * 288 * 16 = 18432` bytes (18 KiB), versus 16384 bytes today. This fits the TSL
+network's actual `NR_MIN_WORKGROUP_STORAGE = 24576` bytes (24 KiB), with no limit change. PR #4's claim of an
+existing 32 KiB requirement describes the reference backend, not this TSL minimum. The pinned upstream
+`matmul/padded.js` pads its packed B exponent array to nine words per column; this candidate adapts that idea to
+our different `vec4` layout and 2-row / 4-column invocation mapping. Bank behavior is hardware-dependent, and
+extra storage can also affect occupancy.
+
+### Fresh measurements
+
+The available machine was a MacBook Air with Apple M3 and 24 GB RAM, using Node 26.3.0, pnpm 11.27.0 and Dawn's
+Metal backend (adapter description: `Metal driver on macOS Version 27.0.1 (Build 26A434)`). GPU timestamp queries
+were available. Other implementation agents paused GPU work for this measurement slot; unrelated system GPU
+activity is not controlled. The unchanged `gemm.bench.gpu.test.ts` benchmark uses deterministic synthetic weights,
+a compile/warm-up dispatch followed by 25 trials of four dispatches per shape, reporting the minimum per-dispatch
+GPU time. These are kernel timings, not full-network frame times. Two baseline and two candidate runs were
+alternated B/P/B/P using identical inputs and settings.
+
+| Shape                                 | Baseline 1 ms | Padded 1 ms | Baseline 2 ms | Padded 2 ms | Change in mean of minima |
+| ------------------------------------- | ------------: | ----------: | ------------: | ----------: | -----------------------: |
+| L0 expand 32→128 SiLU                 |         9.634 |       9.798 |         9.667 |       9.798 |                   +1.53% |
+| L0 contract 128→32 dual f16 skip      |         9.355 |       9.552 |         9.388 |       9.535 |                   +1.84% |
+| L0 qkv 32→96 half                     |         7.242 |       7.209 |         7.127 |       7.209 |                   +0.34% |
+| L0 projection 32 dual f16 skip        |         2.900 |       3.031 |         2.900 |       3.015 |                   +4.24% |
+| L1 expert expand 64 (2×128)           |         9.191 |       9.290 |         9.191 |       9.290 |                   +1.08% |
+| L1 expert contract (2×128→32)         |         4.473 |       4.424 |         4.473 |       4.424 |                   −1.10% |
+| L1 qkv 64→192                         |         6.849 |       6.898 |         6.849 |       6.898 |                   +0.72% |
+| L3 expert expand 256 (8×128)          |         8.782 |       8.913 |         8.782 |       8.913 |                   +1.49% |
+| L4 split layer0 512                   |         2.212 |       2.228 |         2.212 |       2.228 |                   +0.72% |
+| ViT contract 4096→1024 p1024          |         3.228 |       3.277 |         3.228 |       3.277 |                   +1.52% |
+| Adapter f16 16→32 (unchanged control) |         2.949 |       2.949 |         2.949 |       2.949 |                    0.00% |
+| Head f16 32→4 (unchanged control)     |         0.639 |       0.639 |         0.639 |       0.639 |                    0.00% |
+
+Small differences, especially below 1%, should not be treated as statistically established wins or regressions:
+this is a minimum-of-trials benchmark with two runs per variant. The isolated expert-contract gain does not
+justify universal padding; the repeatable projection regression and larger storage requirement favor retaining
+the current layout on this hardware. NVIDIA/AMD measurements and whole-network timings were not collected.
+
+To reproduce, begin from baseline `78347756633cff223d79ed35c9f03a60a8273f05`, install the pinned dependencies, and run:
+
+```sh
+pnpm install --frozen-lockfile
+NR_BENCH=1 pnpm exec vitest run --project gpu packages/three-dlss-nr/src/kernels/gemm.bench.gpu.test.ts --silent=false
+```
+
+For the candidate, independently replace only the four tile lengths and producer/consumer slot formulas using
+the table above, then alternate the same benchmark command with the baseline on an idle GPU. The source proposal
+can be inspected without checking out its branch:
+
+```sh
+git-dedup fetch origin pull/4/head:refs/remotes/origin/pr-4-reference
+git-dedup show 458384d776c98e0c75bea855319561fc50b110f6:packages/three-dlss-nr/src/kernels/gemmFp8.ts
+```
+
+Do not include PR #4's separate half-rounding changes in this experiment. The production kernel and committed
+WGSL snapshots remain unchanged. Candidate GPU validation passed all 23 CPU-oracle role comparisons, partial
+columns, large folded-row coverage and WGSL checks (49/50 tests overall, with candidate snapshots updated only
+locally). Its reference comparison failed at one half value in `dense contract 128->32 dual, f16 skip`: element
+212 was `0x6457` versus reference `0x6458`. The unchanged baseline reproduced exactly the same discrepancy,
+so this is an existing Metal/reference limitation, not evidence against the candidate's addressing. No
+candidate whole-network parity claim is made. Keep issue #7 open for cross-GPU evaluation before adopting padding.
