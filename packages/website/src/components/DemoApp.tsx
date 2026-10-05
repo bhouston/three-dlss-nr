@@ -454,9 +454,41 @@ function Controls({ state, controller }: { state: DemoState; controller: DemoCon
           </div>
         ) : null}
         <p className="text-xs text-muted-foreground">
-          GPU time of the network per frame (timestamp queries), median of recent frames. Other GPU work on this machine
-          inflates it.
+          GPU time per frame (timestamp queries), median of recent frames. Upstream frame mode also includes input
+          preparation and composition. Other GPU work on this machine inflates it.
         </p>
+        <details className="text-xs text-muted-foreground">
+          <summary className="cursor-pointer rounded focus-visible:outline-2 focus-visible:outline-offset-2">
+            About backends and frame modes
+          </summary>
+          <div className="mt-2 space-y-2">
+            <p>
+              Both backends run the same network with your loaded model weights. TSL is the native Three.js shader
+              implementation; Reference WGSL runs the pinned upstream OpenDLSS-NR WebGPU implementation.
+            </p>
+            <p>
+              TSL uses float and integer arithmetic without requiring shader-f16. Reference WGSL requires shader-f16.
+              TSL needs at least 24 KiB of workgroup storage and 256 invocations per workgroup; Reference WGSL needs 32
+              KiB and 512. Both need eight storage-buffer bindings per shader stage and enough buffer capacity for the
+              model and resolution. Device support does not imply equal speed.
+            </p>
+            <p>
+              With Reference WGSL selected, the frame-mode switch chooses input preparation and output composition:
+              shared TSL frame kernels or upstream frame.wgsl. It keeps the Reference WGSL network selected.
+            </p>
+            <p>
+              Compare backends with the same model, scene, camera, resolution, NR settings and shared frame mode. In
+              shared frame mode, GPU time measures the network; upstream frame mode also times input preparation and
+              composition. Demo FPS includes scene rendering and presentation. GPU time needs timestamp-query support;
+              wall time includes waiting for submitted GPU work. Let recent samples refresh after changes, warm up first
+              and compare on an idle GPU.
+            </p>
+            <p>
+              Parity checks cover deterministic synthetic inputs and weights, including tested kernels and whole-network
+              cases. They do not establish identical results or performance for every device or model.
+            </p>
+          </div>
+        </details>
       </Section>
 
       <Section title="NR settings">
