@@ -2,29 +2,29 @@
 
 exports[`FP8 GEMM WGSL > matches the snapshot (codegen drift on a three bump shows here) 1`] = `
 {
-  "ViT contract 4096 (partition 1024, E4 skip)": "fd7f2f8fddcddc73",
-  "ViT projection 1024 (partition 256, E4 skip)": "83c0a0e7dfc46c53",
-  "ViT qkv 1024 half (partition 512)": "5c9170d22c8bf04f",
-  "decoder transition 128->64 half": "7b4e6737ca703260",
-  "dense contract 128->32 dual, f16 skip": "ef63bc32894f71c8",
-  "dense expand 32->128 SiLU": "d53d7202f8e9e127",
-  "expert contract 256 (8x 128->32)": "fc769dc013189824",
-  "expert contract 64 (2x 128->32)": "ec9072f3d3ce5935",
-  "expert expand 256 (8x128, broadcast, SiLU)": "f6ce5b257a608063",
-  "expert expand 64 (2x128, broadcast, SiLU)": "b990e10628ab40b1",
-  "expert merge 64 dual, E4 skip": "8110804bfe35a10f",
-  "projection 32 E4, f16 skip": "317599ecaf497f45",
-  "projection 32 dual, f16 skip": "a97fde0009758523",
-  "projection 64 E4, E4 skip": "9edef1bd982e8f56",
-  "qkv 128->384 half": "ba646f72739daaa5",
-  "qkv 32->96 half": "f2c9cf2aa73fd992",
-  "split contract (8x 256->64)": "fb446511260d91c0",
-  "split expand (8x 64->256, SiLU)": "38f5c8565fc5fa4e",
-  "split layer0 512": "ecd94a3a783dbad7",
-  "split merge 512, E4 skip": "913e719b7e2a1a4d",
-  "transition 30-31 (512->1024)": "4e21a0fa0b264a1b",
-  "transition 38-39 1024->512 half (partition 256)": "4636c64e7156b50e",
-  "transition 4-5 (32->64)": "74c4ae35999e0d62",
+  "ViT contract 4096 (partition 1024, E4 skip)": "dc51f6d4ed312f24",
+  "ViT projection 1024 (partition 256, E4 skip)": "750e036db3634c2c",
+  "ViT qkv 1024 half (partition 512)": "d24ac0a099dd7ee9",
+  "decoder transition 128->64 half": "7754735e602a3645",
+  "dense contract 128->32 dual, f16 skip": "b1bafff9f1da63a6",
+  "dense expand 32->128 SiLU": "971e55ae97034599",
+  "expert contract 256 (8x 128->32)": "c91fc0906fe43060",
+  "expert contract 64 (2x 128->32)": "fc63102a485d684a",
+  "expert expand 256 (8x128, broadcast, SiLU)": "dbf9582068861e71",
+  "expert expand 64 (2x128, broadcast, SiLU)": "d9ca25ca58341dc9",
+  "expert merge 64 dual, E4 skip": "1c0fe31df3b4aec3",
+  "projection 32 E4, f16 skip": "2fe520dd224f8731",
+  "projection 32 dual, f16 skip": "a8cc61d441b8fdba",
+  "projection 64 E4, E4 skip": "03ca430b90fbd2aa",
+  "qkv 128->384 half": "66b68713151456b0",
+  "qkv 32->96 half": "165e079cbb10893c",
+  "split contract (8x 256->64)": "0be38baa1a348db4",
+  "split expand (8x 64->256, SiLU)": "aba0ecf01c877076",
+  "split layer0 512": "1642564568b16e94",
+  "split merge 512, E4 skip": "9bedd96d5643b786",
+  "transition 30-31 (512->1024)": "81a45f83800b3e01",
+  "transition 38-39 1024->512 half (partition 256)": "7bfdcc528ba4e201",
+  "transition 4-5 (32->64)": "3e99f6b88a627f5e",
 }
 `;
 
@@ -116,7 +116,7 @@ fn nr_round_shift_right_even ( value : u32, shift : u32 ) -> u32 {
 
 }
 
-fn nr_f16_bits ( value : f32 ) -> u32 {
+fn nr_f16_bits_fallback ( value : f32 ) -> u32 {
 
 	var nodeVar# : u32;
 	var nodeVar# : u32;
@@ -187,7 +187,24 @@ fn nr_f16_to_f32 ( bits : u32 ) -> f32 {
 
 fn nr_round_f16 ( value : f32 ) -> f32 {
 
-	return nr_f16_to_f32( nr_f16_bits( value ) );
+	var nodeVar# : f32;
+	var nodeVar# : u32;
+	var nodeVar# : u32;
+
+	nodeVar# = bitcast<u32>( value );
+	nodeVar# = ( nodeVar# & 2147483647u );
+
+	if ( ( ( nodeVar# >= 947912704u ) && ( nodeVar# < 1199566848u ) ) ) {
+
+		nodeVar# = bitcast<f32>( ( ( nodeVar# & 2147483648u ) | ( ( ( nodeVar# + 4095u ) + ( ( nodeVar# >> 13u ) & 1u ) ) & 4294959104u ) ) );
+
+	} else {
+
+		nodeVar# = nr_f16_to_f32( nr_f16_bits_fallback( value ) );
+
+	}
+
+	return nodeVar#;
 
 }
 
@@ -239,6 +256,29 @@ fn nr_publish_e4_code_gemm ( value : f32 ) -> u32 {
 	nodeVar# = select( ( ( ( ( ( nodeVar# + 524287u ) + ( ( nodeVar# >> 20u ) & 1u ) ) & 4293918720u ) >> 20u ) - 960u ), u32( round( ( nodeVar# * 512.0 ) ) ), ( nodeVar# < 0.015625 ) );
 	nodeVar# = select( 0u, 128u, ( value < 0.0 ) );
 	nodeVar# = select( ( nodeVar# | nodeVar# ), 0u, ( ( ( bitcast<u32>( value ) & 2147483647u ) > 2139095040u ) || ( nodeVar# == 0.0 ) ) );
+
+	return nodeVar#;
+
+}
+
+fn nr_f16_bits ( value : f32 ) -> u32 {
+
+	var nodeVar# : u32;
+	var nodeVar# : u32;
+	var nodeVar# : u32;
+
+	nodeVar# = bitcast<u32>( value );
+	nodeVar# = ( nodeVar# & 2147483647u );
+
+	if ( ( ( nodeVar# >= 947912704u ) && ( nodeVar# < 1199570944u ) ) ) {
+
+		nodeVar# = ( ( ( nodeVar# >> 16u ) & 32768u ) | ( ( ( ( nodeVar# + 4095u ) + ( ( nodeVar# >> 13u ) & 1u ) ) >> 13u ) - 114688u ) );
+
+	} else {
+
+		nodeVar# = nr_f16_bits_fallback( value );
+
+	}
 
 	return nodeVar#;
 
