@@ -15,6 +15,7 @@ import type {
 } from 'three-dlss-nr';
 
 import { DEFAULT_MODEL_ID, headModel } from './models';
+import { modelFitDistance } from './modelFraming';
 import { createStudio, loadHead, type LoadedHead, type Studio } from './studio';
 import { readModelDirectory, syntheticWeights, type WeightsSource } from './weights';
 
@@ -77,6 +78,8 @@ export interface DemoState {
   resolution: Resolution;
   modelId: string;
   modelLoading: boolean;
+  requestedModelId: string | null;
+  modelError: { modelId: string; message: string } | null;
   autoRotate: boolean;
   timings: Partial<Record<NRBackendId, BackendTiming>>;
   fps: number;
@@ -117,6 +120,7 @@ export class DemoController {
   private container: HTMLElement | null = null;
   private disposed = false;
   private networkRequest = 0;
+  private modelRequest = 0;
   private weightsRequest = 0;
   private networkPreparing = false;
   private lifetime = new AbortController();
@@ -145,6 +149,8 @@ export class DemoController {
       resolution: RESOLUTIONS[1],
       modelId: DEFAULT_MODEL_ID,
       modelLoading: true,
+      requestedModelId: null,
+      modelError: null,
       autoRotate: true,
       timings: {},
       fps: 0,
@@ -337,6 +343,17 @@ export class DemoController {
     this.renderer.setSize(width, height, false);
     this.camera.aspect = width / height;
     this.camera.updateProjectionMatrix();
+    // Preserve the current orbit while backing out if a narrower viewport would clip the subject.
+    if (this.head && headModel(this.state.modelId).presentation && this.controls) {
+      const distance = modelFitDistance(this.head.radius, this.camera.fov, this.camera.aspect);
+      const offset = this.camera.position.clone().sub(this.controls.target);
+      if (offset.length() < distance) {
+        this.camera.position.copy(this.controls.target).add(offset.setLength(distance));
+        this.controls.maxDistance = Math.max(12, distance * 2);
+        this.controls.update();
+        this.pass?.resetHistory();
+      }
+    }
   }
 
   private frame(): void {
@@ -401,9 +418,32 @@ export class DemoController {
   }
 
   resetCamera(): void {
-    this.camera?.position.set(1.2, 0.25, 5.4);
-    this.controls?.target.set(0, 0.05, 0);
+    const controls = this.controls;
+    const damping = controls?.enableDamping;
+    const autoRotate = controls?.autoRotate;
+    // Drain pending orbit/pan deltas before applying the new camera defaults.
+    if (controls) {
+      controls.enableDamping = false;
+      controls.autoRotate = false;
+      controls.update();
+    }
+    const entry = headModel(this.state.modelId);
+    if (entry.presentation && this.head && this.camera && this.controls) {
+      const direction = new THREE.Vector3(...entry.presentation.cameraDirection).normalize();
+      const distance = modelFitDistance(this.head.radius, this.camera.fov, this.camera.aspect);
+      this.camera.position.copy(direction.multiplyScalar(distance));
+      this.controls.target.set(0, 0, 0);
+      this.controls.maxDistance = Math.max(12, distance * 2);
+    } else {
+      this.camera?.position.set(1.2, 0.25, 5.4);
+      this.controls?.target.set(0, 0.05, 0);
+      if (this.controls) this.controls.maxDistance = 12;
+    }
     this.controls?.update();
+    if (controls) {
+      controls.enableDamping = damping;
+      controls.autoRotate = autoRotate;
+    }
     this.pass?.resetHistory();
   }
 
@@ -417,11 +457,13 @@ export class DemoController {
   }
 
   async setModel(id: string): Promise<void> {
+    if (this.disposed) return;
     const entry = headModel(id);
-    this.set({ modelId: id, modelLoading: true });
+    const request = ++this.modelRequest;
+    this.set({ requestedModelId: id, modelLoading: true, modelError: null });
     try {
       const head = await loadHead(entry);
-      if (this.disposed || this.state.modelId !== id) {
+      if (this.disposed || request !== this.modelRequest) {
         head.dispose();
         return;
       }
@@ -431,10 +473,16 @@ export class DemoController {
       }
       this.head = head;
       this.studio!.stage.add(head.object);
+      this.set({ modelId: id });
+      this.studio!.scene.environmentIntensity = entry.presentation?.environmentIntensity ?? 0.35;
       // A new subject is a camera cut for the temporal history.
-      this.pass?.resetHistory();
+      this.resetCamera();
+    } catch (error) {
+      if (!this.disposed && request === this.modelRequest) {
+        this.set({ modelError: { modelId: id, message: `Could not load ${entry.label}: ${String(error)}` } });
+      }
     } finally {
-      if (this.state.modelId === id) this.set({ modelLoading: false });
+      if (!this.disposed && request === this.modelRequest) this.set({ modelLoading: false, requestedModelId: null });
     }
   }
 
