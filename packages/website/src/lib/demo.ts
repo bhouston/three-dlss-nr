@@ -366,6 +366,15 @@ export class DemoController {
   }
 
   resetCamera(): void {
+    const controls = this.controls;
+    const damping = controls?.enableDamping;
+    const autoRotate = controls?.autoRotate;
+    // Drain pending orbit/pan deltas before applying the new camera defaults.
+    if (controls) {
+      controls.enableDamping = false;
+      controls.autoRotate = false;
+      controls.update();
+    }
     const entry = headModel(this.state.modelId);
     if (entry.presentation && this.head && this.camera && this.controls) {
       const direction = new THREE.Vector3(...entry.presentation.cameraDirection).normalize();
@@ -379,6 +388,10 @@ export class DemoController {
       if (this.controls) this.controls.maxDistance = 12;
     }
     this.controls?.update();
+    if (controls) {
+      controls.enableDamping = damping;
+      controls.autoRotate = autoRotate;
+    }
     this.pass?.resetHistory();
   }
 

@@ -1,4 +1,5 @@
 import * as THREE from 'three/webgpu';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { expect, it, vi } from 'vitest';
 import { DemoController } from './demo';
 import { headModel } from './models';
@@ -19,6 +20,23 @@ function fixture() {
   internals.pass = { resetHistory: vi.fn() };
   return { controller, internals };
 }
+
+it('resets camera defaults while real OrbitControls has pending damped rotation', async () => {
+  const { controller, internals } = fixture();
+  internals.controls = new OrbitControls(internals.camera);
+  internals.controls.enableDamping = true;
+  internals.controls.autoRotate = true;
+  vi.mocked(loadHead).mockResolvedValueOnce(loaded(1.25));
+  await controller.setModel('sheen-sofa');
+  internals.controls.update(1);
+  controller.resetCamera();
+  const entry = headModel('sheen-sofa');
+  const distance = modelFitDistance(1.25, 26, 16 / 9);
+  const expected = new THREE.Vector3(...entry.presentation!.cameraDirection).normalize().multiplyScalar(distance);
+  expect(internals.camera.position.distanceTo(expected)).toBeLessThan(1e-8);
+  expect(internals.controls.enableDamping).toBe(true);
+  expect(internals.controls.autoRotate).toBe(true);
+});
 
 it('retains the last working model/selection on failure, displays an English error and permits retry', async () => {
   const { controller, internals } = fixture();
