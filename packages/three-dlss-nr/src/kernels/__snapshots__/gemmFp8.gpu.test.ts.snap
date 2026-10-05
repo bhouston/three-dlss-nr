@@ -7,7 +7,7 @@ exports[`FP8 GEMM WGSL > matches the snapshot (codegen drift on a three bump sho
   "ViT qkv 1024 half (partition 512)": "5c9170d22c8bf04f",
   "decoder transition 128->64 half": "7b4e6737ca703260",
   "dense contract 128->32 dual, f16 skip": "ef63bc32894f71c8",
-  "dense expand 32->128 SiLU": "89d1af1aaffcc700",
+  "dense expand 32->128 SiLU": "d53d7202f8e9e127",
   "expert contract 256 (8x 128->32)": "fc769dc013189824",
   "expert contract 64 (2x 128->32)": "ec9072f3d3ce5935",
   "expert expand 256 (8x128, broadcast, SiLU)": "f6ce5b257a608063",
