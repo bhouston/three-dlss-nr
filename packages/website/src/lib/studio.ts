@@ -56,6 +56,8 @@ export function createStudio(renderer: any): Studio {
 
 export interface LoadedHead {
   object: any;
+  /** Bounding sphere radius after normalization, used to fit the complete subject. */
+  radius: number;
   dispose(): void;
 }
 
@@ -108,7 +110,13 @@ export async function loadHead(entry: HeadModel): Promise<LoadedHead> {
     const box = new THREE.Box3().setFromObject(root);
     const size = box.getSize(new THREE.Vector3());
     const centre = box.getCenter(new THREE.Vector3());
-    const scale = (hints.height ?? 2) / Math.max(size.y, 1e-6);
+    if (![size.x, size.y, size.z].every(Number.isFinite) || size.length() <= 0) {
+      throw new Error(`Scene "${entry.label}" has no finite visible bounds`);
+    }
+    const scale =
+      hints.size === undefined
+        ? (hints.height ?? 2) / Math.max(size.y, 1e-6)
+        : hints.size / Math.max(size.x, size.y, size.z);
     const object = new THREE.Group();
     object.name = entry.id;
     root.position.sub(centre);
@@ -118,6 +126,7 @@ export async function loadHead(entry: HeadModel): Promise<LoadedHead> {
 
     return {
       object,
+      radius: (size.length() * scale) / 2,
       dispose: () => resources.dispose(),
     };
   } catch (error) {

@@ -16,7 +16,7 @@ const deferred = () => {
 
 const controller = () => {
   const demo: any = new DemoController();
-  demo.studio = { stage: new THREE.Group(), dispose: vi.fn() };
+  demo.studio = { stage: new THREE.Group(), scene: new THREE.Scene(), dispose: vi.fn() };
   demo.head = head();
   demo.studio.stage.add(demo.head.object);
   demo.pass = { resetHistory: vi.fn(), dispose: vi.fn() };
@@ -24,6 +24,27 @@ const controller = () => {
 };
 
 describe('model load races', () => {
+  it('keeps a newer same-ID request pending when an older request rejects', async () => {
+    const demo = controller();
+    let reject!: (error: Error) => void;
+    const older = new Promise<ReturnType<typeof head>>((_resolve, fail) => {
+      reject = fail;
+    });
+    const newer = deferred();
+    loads.head.mockReturnValueOnce(older).mockReturnValueOnce(newer.promise);
+    const first = demo.setModel(DEFAULT_MODEL_ID);
+    const second = demo.setModel(DEFAULT_MODEL_ID);
+    reject(new Error('obsolete failure'));
+    await first;
+    expect(demo.getState().modelLoading).toBe(true);
+    expect(demo.getState().requestedModelId).toBe(DEFAULT_MODEL_ID);
+    expect(demo.getState().modelError).toBeNull();
+    newer.resolve(head());
+    await second;
+    expect(demo.getState().modelLoading).toBe(false);
+    expect(demo.getState().requestedModelId).toBeNull();
+  });
+
   it('disposes a superseded same-ID load without replacing the current model', async () => {
     const demo = controller();
     const displayed = demo.head;
@@ -50,7 +71,10 @@ describe('model load races', () => {
     const demo = controller();
     const displayed = demo.head;
     loads.head.mockRejectedValueOnce(new Error('load failed'));
-    await expect(demo.setModel(DEFAULT_MODEL_ID)).rejects.toThrow('load failed');
+    await demo.setModel(DEFAULT_MODEL_ID);
+    expect(demo.getState().modelId).toBe(DEFAULT_MODEL_ID);
+    expect(demo.getState().requestedModelId).toBeNull();
+    expect(demo.getState().modelError?.message).toContain('load failed');
     expect(demo.head).toBe(displayed);
     expect(displayed.dispose).not.toHaveBeenCalled();
     expect(demo.getState().modelLoading).toBe(false);
