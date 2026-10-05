@@ -32,8 +32,9 @@ import {
   nrRoundShiftRightEven,
   nrVitExpWeight,
 } from './numerics.js';
-import type { BufferSource } from './KernelBuilder.js';
-import { loadE4, loadF32, loadHalf, loadHalfBits, packHalfPair, packWord4, u, type TSLNode } from './packed.js';
+import { kernel, kernelWGSL, type BufferSource } from './KernelBuilder.js';
+import { wordAttribute } from '../tensors.js';
+import { loadE4, loadF32, loadHalf, loadHalfBits, packHalfPair, packWord4, pick, u, type TSLNode } from './packed.js';
 
 const ALL_HALVES = 65536;
 const halfIndices = (): Uint32Array => Uint32Array.from({ length: ALL_HALVES }, (_, index) => index);
@@ -108,6 +109,47 @@ async function checkFixtureCase(
   }
   if (!note.endsWith(' equal')) console.warn(`[device note] ${note}`);
 }
+
+describe('half publication code generation', () => {
+  it('keeps fast-path branches when first compiled directly or inside pick', async () => {
+    // Layout functions cache their first generated body per renderer backend. Use a fresh backend for each
+    // calling context so a previous direct call cannot hide a uniformFlow leak from pick().
+    for (const insidePick of [false, true]) {
+      const isolated = await createGpuTestContext();
+      try {
+        for (const [name, helper] of [
+          ['nr_f16_bits', nrF16Bits],
+          ['nr_round_f16', (value: TSLNode) => floatBitsToUint(nrRoundF16(value))],
+        ] as const) {
+          const inputSource = wordsBuffer(Uint32Array.of(oracle.f32Bits(1.001)));
+          const outputSource = { attribute: wordAttribute(4) };
+          const k = kernel({
+            label: name,
+            kind: 'half_codegen',
+            workgroupSize: [1],
+            dispatch: [1],
+            inputs: { input: inputSource },
+            outputs: { output: outputSource },
+            body: ({ input, output }) => {
+              const value = uintBitsToFloat(input.element(u(0)));
+              const published = insidePick
+                ? pick(input.element(u(0)).notEqual(u(0)), helper(value), u(0))
+                : helper(value);
+              output.element(u(0)).assign(published);
+            },
+          });
+          const shader = kernelWGSL(isolated.renderer, k);
+          const body = shader.split(`fn ${name} (`)[1]?.split(/\n(?:fn |@compute)/)[0];
+          expect(body, `${name}, insidePick=${insidePick}`).toMatch(/\bif \(/);
+          expect(body).toMatch(/} else {/);
+          expect(shader).not.toMatch(/\benable f16\b/);
+        }
+      } finally {
+        isolated.dispose();
+      }
+    }
+  });
+});
 
 describe('TSL numerics vs the reference fixture (and the reference WGSL on this device)', () => {
   it('nrF16Bits over the F16B f32 patterns', async () => {
@@ -196,6 +238,40 @@ describe('TSL numerics vs the TS oracle, exhaustive', () => {
     const expected = Array.from(halfIndices(), (h) => oracle.f16ToF32Bits(h));
     const result = diffArrays(values, expected, { equivalent: bothF32NaN });
     expect(result.mismatches, describeMismatches('loadHalf', result)).toBe(0);
+  });
+
+  it('rounds every signed half midpoint and its adjacent f32 values, including overflow', async () => {
+    // Adjacent positive finite halves have an exactly representable f32 midpoint, including zero/subnormal edges.
+    // Add both signs at each point; +/-65520 is the tie between the largest finite half and infinity.
+    const words = new Uint32Array(0x7c00 * 6);
+    let cursor = 0;
+    for (let lower = 0; lower < 0x7c00; ++lower) {
+      const midpoint = lower === 0x7bff ? 65520 : (oracle.f16ToNumber(lower) + oracle.f16ToNumber(lower + 1)) / 2;
+      const bits = oracle.f32Bits(midpoint);
+      for (const offset of [-1, 0, 1]) {
+        words[cursor++] = bits + offset;
+        words[cursor++] = (bits + offset) | 0x80000000;
+      }
+    }
+    expect(cursor).toBe(words.length);
+    for (const [label, helper, expected] of [
+      ['midpoint_f16_bits', nrF16Bits, oracle.f16Bits],
+      [
+        'midpoint_round_f16',
+        (value: TSLNode) => floatBitsToUint(nrRoundF16(value)),
+        (value: number) => oracle.f32Bits(oracle.roundF16(value)),
+      ],
+    ] as const) {
+      const actual = await runPerElement(gpu.renderer, {
+        label,
+        count: words.length,
+        inputs: { words: wordsBuffer(words) },
+        compute: (index, { words: view }) => helper(loadF32(view, index)),
+      });
+      const reference = Array.from(words, (bits) => expected(oracle.f32FromBits(bits)));
+      const diff = diffArrays(actual, reference);
+      expect(diff.mismatches, describeMismatches(label, diff)).toBe(0);
+    }
   });
 
   it('nrF16Bits and nrRoundF16 over 2^20 random f32 patterns', async () => {
