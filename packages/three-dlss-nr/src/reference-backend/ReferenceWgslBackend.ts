@@ -4,12 +4,13 @@
 // reference WebGPU port of OpenDLSS-NR by maan (https://github.com/maanHimself/OpenDLSS-NR,
 // ports/browser-webgpu, MIT, Copyright (c) 2026 maan), pinned at commit 9d08f41, vendored byte for byte into
 // vendor/opendlss-nr/ at build time (scripts/bundle-reference.mjs). This file only does what the upstream
-// `Network.create` does (src/network.js), with three differences:
+// `Network.create` does (src/network.js), with four differences:
 //   * the WGSL comes from the vendored string constants instead of fetch() (a package cannot rely on a server
 //     layout), and the frame shader can be added the way the upstream demo adds it (`extraShaders`);
 //   * the device is `renderer.backend.device`, and the input features and the head are three.js storage
 //     attributes whose GPU buffers the upstream graph writes and reads directly (GPU-resident I/O, no copies);
-//   * a model given in memory is uploaded with the same steps as the upstream `Model.load` (which only fetches).
+//   * a model given in memory is uploaded with the same steps as the upstream `Model.load` (which only fetches);
+//   * immutable kernel programs are retained per device so resolution rebuilds reuse specialized pipelines.
 // It implements the backend-neutral `NRBackend` interface, so it can be swapped with the native TSL port.
 
 import {
@@ -226,6 +227,64 @@ export interface ReferenceWgslCreateOptions extends Omit<NRBackendCreateOptions,
   after?: (network: any) => void;
 }
 
+interface ReferencePrograms {
+  kernels: any;
+  matmul: any;
+  window: any;
+}
+
+// The pinned compiler keys specialization promises by module/layout identity and constants.
+// These objects contain programs and device lookup tables, never graph activations or temporal state.
+const programCaches = new WeakMap<GPUDevice, Map<string, Promise<ReferencePrograms>>>();
+
+function preparePrograms(
+  device: GPUDevice,
+  paddedTokens: number,
+  extraShaders: ReferenceWgslCreateOptions['extraShaders'] = [],
+): Promise<ReferencePrograms> {
+  // Copy caller-owned shader descriptors before the first await, so the key describes the code built.
+  const shaders = extraShaders.map(({ name, code, entryPoints }) => ({ name, code, entryPoints: [...entryPoints] }));
+  const key = JSON.stringify([paddedTokens, shaders]);
+  let cache = programCaches.get(device);
+  if (!cache) {
+    cache = new Map();
+    programCaches.set(device, cache);
+    void device.lost.then(() => programCaches.delete(device));
+  }
+  const cached = cache.get(key);
+  if (cached) return cached;
+  const preparation = buildPrograms(device, paddedTokens, shaders);
+  cache.set(key, preparation);
+  // Concurrent callers share preparation, but a failed preparation must not poison the next build.
+  const currentCache = cache;
+  void preparation.catch(() => {
+    if (currentCache.get(key) === preparation) currentCache.delete(key);
+  });
+  return preparation;
+}
+
+async function buildPrograms(
+  device: GPUDevice,
+  paddedTokens: number,
+  shaders: NonNullable<ReferenceWgslCreateOptions['extraShaders']>,
+): Promise<ReferencePrograms> {
+  const numerics = SHADERS['numerics.wgsl'];
+  const kernels = await Kernels.create(device);
+  await kernels.add(numerics, SHADERS['gemm_f16.wgsl'], 'gemm_f16.wgsl', ['gemm_f16']);
+  await kernels.add(numerics, SHADERS['vit.wgsl'], 'vit.wgsl', ['vit_normalize', 'vit_attend'], {
+    PADDED_TOKENS: paddedTokens,
+  });
+  await kernels.add(numerics, SHADERS['ops.wgsl'], 'ops.wgsl', [
+    'convert_f32_to_f16',
+    'downsample',
+    'upsample_residual',
+    'post_blend',
+  ]);
+  await kernels.add(numerics, SHADERS['preprocess.wgsl'], 'preprocess.wgsl', ['preprocess']);
+  for (const { name, code, entryPoints } of shaders) await kernels.add(numerics, code, name, entryPoints);
+  return { kernels, matmul: await Matmul.create(device), window: WindowAttention.create(device, numerics) };
+}
+
 /**
  * The reference network on a three.js renderer. `network` is the upstream `Network` instance (its `run`,
  * `readHead`, `readBoundary`, `readTensorByLabel` and `destroy` are the upstream methods).
@@ -290,26 +349,11 @@ export class ReferenceWgslBackend implements NRBackend {
     network.geometry = geometryFromValid(width, height);
     const geometry = network.geometry;
 
-    onProgress?.('compiling kernels');
-    const numerics = SHADERS['numerics.wgsl'];
-    const kernels = await Kernels.create(device);
-    await kernels.add(numerics, SHADERS['gemm_f16.wgsl'], 'gemm_f16.wgsl', ['gemm_f16']);
-    await kernels.add(numerics, SHADERS['vit.wgsl'], 'vit.wgsl', ['vit_normalize', 'vit_attend'], {
-      PADDED_TOKENS: geometry.paddedVitTokens,
-    });
-    await kernels.add(numerics, SHADERS['ops.wgsl'], 'ops.wgsl', [
-      'convert_f32_to_f16',
-      'downsample',
-      'upsample_residual',
-      'post_blend',
-    ]);
-    await kernels.add(numerics, SHADERS['preprocess.wgsl'], 'preprocess.wgsl', ['preprocess']);
-    for (const { name, code, entryPoints } of options.extraShaders ?? []) {
-      await kernels.add(numerics, code, name, entryPoints);
-    }
+    onProgress?.('preparing kernel programs');
+    const { kernels, matmul, window } = await preparePrograms(device, geometry.paddedVitTokens, options.extraShaders);
     network.kernels = kernels;
-    network.matmul = await Matmul.create(device);
-    network.window = WindowAttention.create(device, numerics);
+    network.matmul = matmul;
+    network.window = window;
 
     let referenceModel: ReferenceModel;
     let ownsModel = false;
@@ -355,7 +399,9 @@ export class ReferenceWgslBackend implements NRBackend {
     if (network.graph.head !== network.tensors.byKey.get(tensorKey(head))) {
       throw new Error('the reference graph did not adopt the shared head tensor');
     }
-    await network.recorder.finish((done: number, count: number) => onProgress?.(`compiling kernels ${done}/${count}`));
+    await network.recorder.finish((done: number, count: number) =>
+      onProgress?.(`preparing specialized dispatches ${done}/${count}`),
+    );
     onProgress?.(
       `ready: ${network.recorder.dispatchCount} dispatches, ` +
         `${(network.tensors.total / 1048576).toFixed(0)} MiB of activations, ` +
