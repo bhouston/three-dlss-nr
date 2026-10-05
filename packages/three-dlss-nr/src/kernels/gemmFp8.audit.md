@@ -202,4 +202,5 @@ columns, large folded-row coverage and WGSL checks (49/50 tests overall, with ca
 locally). Its reference comparison failed at one half value in `dense contract 128->32 dual, f16 skip`: element
 212 was `0x6457` versus reference `0x6458`. The unchanged baseline reproduced exactly the same discrepancy,
 so this is an existing Metal/reference limitation, not evidence against the candidate's addressing. No
-candidate whole-network parity claim is made. Keep issue #7 open for cross-GPU evaluation before adopting padding.
+candidate whole-network parity claim is made. Cross-GPU evaluation and candidate whole-network validation remain
+future work required before reconsidering padding adoption.
